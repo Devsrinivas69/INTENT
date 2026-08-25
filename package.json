@@ -1,0 +1,38 @@
+{
+  "name": "intent-desktop",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Tell your computer what you want. We'll show you how.",
+  "main": "dist-electron/main.js",
+  "author": "INTENT Team",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "package": "npm run build && electron-builder --win",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.4.5",
+    "framer-motion": "^11.3.30",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "electron": "31.7.7",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.40",
+    "tailwindcss": "^3.4.9",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0",
+    "vite-plugin-electron": "^0.28.8",
+    "vite-plugin-electron-renderer": "^0.14.5"
+  }
+}

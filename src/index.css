@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: transparent;
+    color: #FFFFFF;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 3px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 1px;
+  }
+}
+
+@layer components {
+  /* Ultra-minimal black translucent panel */
+  .intent-window {
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
+  }
+
+  /* Minimal floating trigger button */
+  .intent-trigger {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.15s ease-out;
+  }
+
+  .intent-trigger:hover {
+    background: rgba(20, 20, 20, 0.95);
+    border-color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* Monochrome input */
+  .intent-input {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #FFFFFF;
+    transition: border-color 0.15s ease;
+  }
+
+  .intent-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.65);
+  }
+
+  .intent-input::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  /* Button styles */
+  .btn-white {
+    background: #FFFFFF;
+    color: #000000;
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+
+  .btn-white:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  .btn-white:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.15s ease;
+  }
+
+  .btn-outline:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.6);
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+}

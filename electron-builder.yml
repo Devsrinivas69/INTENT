@@ -1,0 +1,27 @@
+appId: com.intent.desktop
+productName: INTENT
+copyright: Copyright © 2024 INTENT
+
+directories:
+  output: release
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: INTENT-Setup-${version}.exe
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerHeaderIcon: public/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+publish: null
