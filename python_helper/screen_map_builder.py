@@ -147,6 +147,11 @@ def find_candidates_in_map(screen_map: dict, target_text: str, min_similarity: f
     """
     candidates = []
     for el in screen_map.get('elements', []):
+        w = el.get('width', 0)
+        h = el.get('height', 0)
+        # Skip giant containers / whole windows
+        if w > 700 and h > 450:
+            continue
         sim = text_similarity(el.get('text', ''), target_text)
         if sim >= min_similarity:
             candidate = {**el, 'similarity': sim}

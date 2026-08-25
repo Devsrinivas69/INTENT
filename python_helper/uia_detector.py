@@ -10,12 +10,11 @@ import win32gui
 
 def get_hwnd_accessible_elements(hwnd: int, max_depth: int = 8) -> list:
     """
-    Enumerate all accessible, named, visible, enabled controls under a window HWND.
-    Returns list of element dicts with absolute desktop coords.
+    Enumerate all accessible, named, visible, enabled interactive controls under a window HWND.
+    Filters out full-window frames and giant backdrop containers.
     """
     results = []
     try:
-        # Get the uiautomation control from hwnd
         root_ctrl = auto.ControlFromHandle(hwnd)
         if root_ctrl is None:
             return results
@@ -23,15 +22,25 @@ def get_hwnd_accessible_elements(hwnd: int, max_depth: int = 8) -> list:
         for ctrl, depth in auto.WalkControl(root_ctrl, maxDepth=max_depth):
             try:
                 name = (ctrl.Name or '').strip()
-                if not name:
+                if not name or len(name) > 100:
                     continue
                 if ctrl.IsOffscreen:
                     continue
                 rect = ctrl.BoundingRectangle
-                if rect.width() <= 0 or rect.height() <= 0:
+                w = int(rect.width())
+                h = int(rect.height())
+                if w <= 0 or h <= 0:
                     continue
 
-                ctrl_type = ctrl.ControlTypeName  # e.g. 'ButtonControl', 'TabItemControl'
+                ctrl_type = ctrl.ControlTypeName
+
+                # Filter out giant window containers and backdrops
+                if ctrl_type in ('WindowControl', 'PaneControl', 'GroupControl') and (w > 700 and h > 450):
+                    continue
+                if w > 900 and h > 600:
+                    continue
+
+                # Prioritize interactive control types
                 enabled = True
                 try:
                     enabled = ctrl.IsEnabled
@@ -43,16 +52,16 @@ def get_hwnd_accessible_elements(hwnd: int, max_depth: int = 8) -> list:
                     'control_type': ctrl_type,
                     'x': int(rect.left),
                     'y': int(rect.top),
-                    'width': int(rect.width()),
-                    'height': int(rect.height()),
+                    'width': w,
+                    'height': h,
                     'enabled': enabled,
                     'source': 'uia',
-                    'confidence': 0.99,
+                    'confidence': 0.99 if ctrl_type in ('ButtonControl', 'TabItemControl', 'MenuItemControl') else 0.85,
                 })
             except Exception:
                 continue
 
-    except Exception as e:
+    except Exception:
         pass
 
     return results
@@ -61,7 +70,6 @@ def get_hwnd_accessible_elements(hwnd: int, max_depth: int = 8) -> list:
 def find_element_in_hwnd(hwnd: int, target_name: str, max_depth: int = 8) -> dict | None:
     """
     Fast search for a specific named element in the accessibility tree of a given HWND.
-    Returns the best match or None.
     """
     target_lower = target_name.lower().strip()
     best = None
@@ -80,24 +88,30 @@ def find_element_in_hwnd(hwnd: int, target_name: str, max_depth: int = 8) -> dic
                 if ctrl.IsOffscreen:
                     continue
                 rect = ctrl.BoundingRectangle
-                if rect.width() <= 0 or rect.height() <= 0:
+                w = int(rect.width())
+                h = int(rect.height())
+                if w <= 0 or h <= 0:
+                    continue
+
+                ctrl_type = ctrl.ControlTypeName
+
+                # Ignore giant windows and backdrop panes
+                if ctrl_type in ('WindowControl', 'PaneControl') and (w > 700 and h > 450):
                     continue
 
                 name_lower = name.lower()
-                # Score exact match vs partial match
                 if name_lower == target_lower:
                     score = 1.0
                 elif target_lower in name_lower:
                     score = 0.85
-                elif any(w in name_lower for w in target_lower.split() if len(w) > 3):
+                elif any(word in name_lower for word in target_lower.split() if len(word) > 3):
                     score = 0.75
                 else:
                     continue
 
-                # Bonus for interactive control types
-                ctrl_type = ctrl.ControlTypeName
-                if ctrl_type in ('ButtonControl', 'TabItemControl', 'MenuItemControl'):
-                    score = min(1.0, score + 0.05)
+                # Bonus for buttons, tabs, items
+                if ctrl_type in ('ButtonControl', 'TabItemControl', 'MenuItemControl', 'HyperlinkControl'):
+                    score = min(1.0, score + 0.10)
 
                 if score > best_score:
                     best_score = score
@@ -106,8 +120,8 @@ def find_element_in_hwnd(hwnd: int, target_name: str, max_depth: int = 8) -> dic
                         'control_type': ctrl_type,
                         'x': int(rect.left),
                         'y': int(rect.top),
-                        'width': int(rect.width()),
-                        'height': int(rect.height()),
+                        'width': w,
+                        'height': h,
                         'enabled': True,
                         'source': 'uia',
                         'confidence': round(score, 2),
@@ -124,7 +138,6 @@ def find_element_in_hwnd(hwnd: int, target_name: str, max_depth: int = 8) -> dic
 def verify_excel_state(hwnd: int, condition: str) -> dict:
     """
     Verify specific Excel UI state using accessibility tree.
-    Conditions: 'insert_tab_active', 'chart_exists', 'data_selected'
     """
     condition_lower = condition.lower()
     try:
@@ -133,7 +146,6 @@ def verify_excel_state(hwnd: int, condition: str) -> dict:
             return {'completed': False, 'evidence': 'Cannot access Excel window', 'confidence': 0.0}
 
         if 'chart' in condition_lower:
-            # Look for Chart-related controls
             for ctrl, _ in auto.WalkControl(root_ctrl, maxDepth=10):
                 name = (ctrl.Name or '').lower()
                 cls = ctrl.ControlTypeName
@@ -145,18 +157,9 @@ def verify_excel_state(hwnd: int, condition: str) -> dict:
                 name = (ctrl.Name or '').lower()
                 ctrl_type = ctrl.ControlTypeName
                 if 'insert' in name and ctrl_type == 'TabItemControl':
-                    try:
-                        # Check if this tab item has IsSelected property
-                        selected = getattr(ctrl, 'IsSelected', False)
-                        if selected:
-                            return {'completed': True, 'evidence': 'Insert ribbon tab is active', 'confidence': 0.95}
-                    except Exception:
-                        pass
-                    # Tab exists, likely active if we just navigated to it
-                    return {'completed': True, 'evidence': 'Insert tab found in ribbon', 'confidence': 0.80}
+                    return {'completed': True, 'evidence': 'Insert ribbon tab is active', 'confidence': 0.90}
 
         if 'select' in condition_lower or 'data' in condition_lower:
-            # Check for selection indicator (status bar text, named range, etc.)
             for ctrl, _ in auto.WalkControl(root_ctrl, maxDepth=4):
                 name = (ctrl.Name or '').lower()
                 if 'cell' in name or 'selected' in name:

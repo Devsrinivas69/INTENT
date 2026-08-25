@@ -66,17 +66,22 @@ export class CoordinateMapper {
   cursorAnchorFromBounds(
     overlayBounds: DesktopBounds,
   ): { x: number; y: number } {
-    const centerX = Math.round(overlayBounds.x + overlayBounds.width / 2)
-    const OFFSET = 20
+    const screenW = this.meta.screenWidth || window.innerWidth || 1920
+    const screenH = this.meta.screenHeight || window.innerHeight || 1080
+
+    const centerX = Math.max(60, Math.min(screenW - 60, Math.round(overlayBounds.x + overlayBounds.width / 2)))
+    const OFFSET = 24
 
     // Place cursor below the target bounding box
     let cursorY = Math.round(overlayBounds.y + overlayBounds.height + OFFSET)
 
     // If target is near the bottom of the screen, place cursor ABOVE it instead
-    const screenH = this.meta.screenHeight || 1080
-    if (cursorY > screenH - 60) {
+    if (cursorY > screenH - 70) {
       cursorY = Math.round(overlayBounds.y - OFFSET - 10)
     }
+
+    // Clamp Y to strictly stay within visible screen bounds (never negative)
+    cursorY = Math.max(40, Math.min(screenH - 50, cursorY))
 
     return {
       x: centerX,

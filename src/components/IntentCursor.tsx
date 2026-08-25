@@ -39,13 +39,13 @@ export function IntentCursor({
   }
 
   const PADDING = 4
-  const boxX = bounds.x - PADDING
-  const boxY = bounds.y - PADDING
-  const boxW = bounds.width + PADDING * 2
-  const boxH = bounds.height + PADDING * 2
+  const boxX = Math.max(10, bounds.x - PADDING)
+  const boxY = Math.max(10, bounds.y - PADDING)
+  const boxW = Math.max(30, bounds.width + PADDING * 2)
+  const boxH = Math.max(20, bounds.height + PADDING * 2)
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" style={{ zIndex: 99999 }}>
       {/* ── 1. Target Bounding Box ────────────────────────────────────────── */}
       <AnimatePresence>
         {bounds && (
@@ -73,8 +73,8 @@ export function IntentCursor({
             <div
               className="absolute inset-0 rounded-[2px]"
               style={{
-                border: '1.5px solid rgba(255, 255, 255, 0.9)',
-                boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.75)',
+                border: '1.5px solid rgba(255, 255, 255, 0.95)',
+                boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.85), 0 0 8px rgba(255, 255, 255, 0.2)',
               }}
             />
 
@@ -99,8 +99,8 @@ export function IntentCursor({
 
             {/* Target Header Tag */}
             <div
-              className="absolute -top-6 left-0 flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-black/90 border border-white/30 text-white font-mono text-[10px] tracking-wider whitespace-nowrap"
-              style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.8)' }}
+              className="absolute -top-6 left-0 flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-black/90 border border-white/40 text-white font-mono text-[10px] tracking-wider whitespace-nowrap"
+              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.85)' }}
             >
               <span className="text-white/60">L{levelNumber}</span>
               <span>•</span>
@@ -118,43 +118,43 @@ export function IntentCursor({
         }}
         transition={{
           type: 'spring',
-          damping: 28,
-          stiffness: 280,
+          damping: 26,
+          stiffness: 260,
           mass: 0.6,
         }}
         className="absolute top-0 left-0"
-        style={{ pointerEvents: 'none' }}
+        style={{ pointerEvents: 'none', zIndex: 999999 }}
       >
-        <div className="relative -top-3 -left-3 flex flex-col items-center">
-          {/* Outer Black Contrast Reticle */}
+        <div className="relative -top-4 -left-4 flex flex-col items-center">
+          {/* Direct Arrow Tip pointing up at target */}
           <div
-            className="w-7 h-7 rounded-full bg-black/80 border border-white/80 flex items-center justify-center"
+            className="w-0 h-0 border-x-[6px] border-x-transparent border-b-[8px] border-b-white"
+            style={{ filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.9))' }}
+          />
+
+          {/* Outer Black Contrast Reticle with White Rim */}
+          <div
+            className="w-8 h-8 rounded-full bg-black/90 border-2 border-white flex items-center justify-center -mt-1"
             style={{
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0,0,0,0.9)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(0,0,0,0.8)',
             }}
           >
             {/* Inner Precision White Dot */}
             <motion.div
-              className="w-2 h-2 rounded-full bg-white"
+              className="w-2.5 h-2.5 rounded-full bg-white"
               animate={
                 status === 'WAITING'
-                  ? { scale: [1, 1.3, 1], opacity: [0.9, 1, 0.9] }
+                  ? { scale: [1, 1.3, 1], opacity: [0.8, 1, 0.8] }
                   : { scale: 1 }
               }
-              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
             />
           </div>
 
-          {/* Guide Line to Target Box */}
-          <div
-            className="w-[1px] h-3 bg-white/70"
-            style={{ boxShadow: '0 0 1px rgba(0,0,0,0.8)' }}
-          />
-
           {/* State Tag under Cursor */}
           <div
-            className="mt-1 px-2 py-0.5 rounded-[2px] bg-black/90 border border-white/20 text-white font-mono text-[9px] uppercase tracking-widest whitespace-nowrap"
-            style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.8)' }}
+            className="mt-1 px-2.5 py-0.5 rounded-[2px] bg-black/95 border border-white/40 text-white font-mono text-[9px] uppercase tracking-widest whitespace-nowrap"
+            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.85)' }}
           >
             {status === 'WAITING' && 'WAITING FOR YOU'}
             {status === 'VERIFYING' && 'VERIFYING...'}
@@ -170,7 +170,7 @@ export function IntentCursor({
         style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.8)' }}
       >
         <div className="flex items-center justify-between text-white font-semibold border-b border-white/10 pb-1">
-          <span>INTENT ENGINE v3</span>
+          <span>INTENT ENGINE v3.2</span>
           <span className="text-white/50">{status}</span>
         </div>
         <div>METHOD: <span className="text-white font-semibold uppercase">{method}</span></div>
