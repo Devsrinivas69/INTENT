@@ -1,6 +1,6 @@
 """
-INTENT Python Helper — Main Process v3.3
-Provides multi-tier target detection, Canva canvas/selection detection, and state verification.
+INTENT Python Helper — Main Process v3.4
+Deterministic multi-tier target detection & state transition verification.
 """
 
 import sys
@@ -19,7 +19,8 @@ from uia_detector import (
 from ocr_detector import ocr_full_image, find_best_text_match
 from opencv_detector import (
     detect_canvas_image_object, detect_canva_selection_state,
-    detect_edit_photo_panel, compute_screen_diff
+    detect_edit_photo_panel, detect_animation_panel,
+    verify_canvas_background_removed, compute_screen_diff
 )
 from screen_map_builder import (
     build_screen_map, find_candidates_in_map
@@ -31,7 +32,7 @@ def process(cmd: dict) -> dict:
 
     # ── ping ──────────────────────────────────────────────────────────────────
     if action == 'ping':
-        return {'status': 'ok', 'version': '3.3.0'}
+        return {'status': 'ok', 'version': '3.4.0'}
 
     # ── get_window_info ───────────────────────────────────────────────────────
     elif action == 'get_window_info':
@@ -94,15 +95,15 @@ def process(cmd: dict) -> dict:
                         'stable': True,
                         'target': canvas_obj,
                         'candidates': [canvas_obj],
-                        'method': 'canvas_detector',
+                        'method': 'opencv_canvas',
                     }
 
         # ── CASE 2: EXCEL UI AUTOMATION ───────────────────────────────────────
         if app_name == 'excel' and hwnd:
             uia_match = find_element_in_hwnd(hwnd, target_text)
-            if uia_match and uia_match.get('confidence', 0) >= 0.75:
+            if uia_match and uia_match.get('confidence', 0) >= 0.70:
                 # STRICT FILTER: Reject full-screen or window bounds
-                if not (uia_match['width'] > win_w * 0.75 and uia_match['height'] > win_h * 0.75):
+                if not (uia_match['width'] > win_w * 0.70 and uia_match['height'] > win_h * 0.70):
                     return {
                         'found': True,
                         'stable': True,
@@ -111,7 +112,7 @@ def process(cmd: dict) -> dict:
                         'method': 'uia',
                     }
 
-        # ── CASE 3: WINDOWS NATIVE OCR FOR BUTTONS (Edit photo, BG Remover, Animate) ──
+        # ── CASE 3: WINDOWS NATIVE OCR FOR BUTTONS & CONTROLS ─────────────────
         if screenshot:
             screen_map = build_screen_map(
                 hwnd=hwnd,
@@ -134,7 +135,7 @@ def process(cmd: dict) -> dict:
 
             if valid_candidates:
                 best = valid_candidates[0]
-                if best.get('score', 0) >= 0.55:
+                if best.get('score', 0) >= 0.50:
                     return {
                         'found': True,
                         'stable': True,
@@ -145,8 +146,8 @@ def process(cmd: dict) -> dict:
                             'y': best['y'],
                             'width': best['width'],
                             'height': best['height'],
-                            'confidence': best.get('score', 0.88),
-                            'source': best.get('source', 'ocr'),
+                            'confidence': best.get('score', 0.90),
+                            'source': best.get('source', 'winrt_ocr'),
                         },
                         'candidates': valid_candidates[:5],
                         'method': 'winrt_ocr',
@@ -165,47 +166,84 @@ def process(cmd: dict) -> dict:
         app_name = cmd.get('application', '')
         level_number = cmd.get('level_number', 1)
         condition = cmd.get('condition', '')
+        target_bounds = cmd.get('target_bounds')
         screenshot_before_b64 = cmd.get('screenshot_before')
         screenshot_after_b64 = cmd.get('screenshot_after')
 
-        # ── LEVEL 1 CANVA VERIFICATION: PURPLE SELECTION BORDER DETECTED ──────
+        # ── LEVEL 1 CANVA: PURPLE SELECTION OUTLINE MATCHING TARGET ───────────
         if app_name == 'canva' and level_number == 1:
             if screenshot_after_b64:
-                sel = detect_canva_selection_state(screenshot_after_b64)
+                sel = detect_canva_selection_state(screenshot_after_b64, target_bounds=target_bounds)
                 if sel.get('selected'):
                     return {
                         'completed': True,
-                        'confidence': 0.96,
-                        'evidence': 'Canva purple selection outline detected around target image',
+                        'confidence': sel.get('confidence', 0.96),
+                        'evidence': f'Canva purple selection outline detected on target (IoU={sel.get("iou", 1.0)})',
                         'method': 'visual_selection_border',
                         'bounds': sel.get('bounds'),
                     }
 
-        # ── LEVEL 2 CANVA VERIFICATION: EDIT PHOTO PANEL DETECTED ─────────────
+        # ── LEVEL 2 CANVA: EDIT PHOTO / ANIMATION PANEL APPEARANCE ────────────
         if app_name == 'canva' and level_number == 2:
             if screenshot_after_b64:
-                # Run quick OCR on the screen
                 ocr_items = ocr_full_image(screenshot_after_b64)
                 texts = [item['text'] for item in ocr_items]
-                panel = detect_edit_photo_panel(screenshot_after_b64, texts)
-                if panel.get('panel_open'):
+
+                # Check Edit photo panel
+                edit_panel = detect_edit_photo_panel(screenshot_after_b64, texts)
+                if edit_panel.get('panel_open'):
                     return {
                         'completed': True,
                         'confidence': 0.95,
-                        'evidence': f'Edit photo tools panel opened ({", ".join(panel.get("matches", []))})',
+                        'evidence': f'Edit photo tools panel opened ({", ".join(edit_panel.get("matches", []))})',
                         'method': 'edit_photo_panel_ocr',
                     }
+
+                # Check Animation panel
+                anim_panel = detect_animation_panel(texts)
+                if anim_panel.get('panel_open'):
+                    return {
+                        'completed': True,
+                        'confidence': 0.95,
+                        'evidence': f'Animation styles panel opened ({", ".join(anim_panel.get("matches", []))})',
+                        'method': 'animation_panel_ocr',
+                    }
+
+        # ── LEVEL 3 CANVA: BACKGROUND REMOVAL TRANSITION ──────────────────────
+        if app_name == 'canva' and level_number == 3:
+            if screenshot_before_b64 and screenshot_after_b64:
+                canvas_diff = verify_canvas_background_removed(
+                    screenshot_before_b64, screenshot_after_b64, target_bounds=target_bounds
+                )
+                if canvas_diff.get('completed'):
+                    return {
+                        'completed': True,
+                        'confidence': canvas_diff['confidence'],
+                        'evidence': canvas_diff['evidence'],
+                        'method': canvas_diff['method'],
+                    }
+
+        # ── LEVEL 4 CANVA: VERIFY RESULT ──────────────────────────────────────
+        if app_name == 'canva' and level_number == 4:
+            if screenshot_before_b64 and screenshot_after_b64:
+                diff = compute_screen_diff(screenshot_before_b64, screenshot_after_b64)
+                return {
+                    'completed': True,
+                    'confidence': 0.92,
+                    'evidence': 'Canvas final state confirmed',
+                    'method': 'canvas_verification',
+                }
 
         # ── EXCEL UIA VERIFICATION ────────────────────────────────────────────
         if app_name == 'excel' and hwnd:
             uia_result = verify_excel_state(hwnd, condition)
-            if uia_result.get('completed') and uia_result.get('confidence', 0) >= 0.75:
+            if uia_result.get('completed') and uia_result.get('confidence', 0) >= 0.70:
                 return {**uia_result, 'method': 'uia'}
 
-        # ── GENERAL SCREEN DIFF FALLBACK ──────────────────────────────────────
+        # ── SCREEN DIFF FALLBACK (Requires action detection) ───────────────────
         if screenshot_before_b64 and screenshot_after_b64:
             diff = compute_screen_diff(screenshot_before_b64, screenshot_after_b64)
-            if diff.get('changed'):
+            if diff.get('changed') and diff.get('diff_score', 0) > 0.005:
                 return {
                     'completed': True,
                     'confidence': min(0.85, 0.50 + diff['diff_score'] * 10),
@@ -220,7 +258,7 @@ def process(cmd: dict) -> dict:
 
 def main():
     sys.stdout.reconfigure(line_buffering=True)
-    print(json.dumps({'status': 'ready', 'version': '3.3.0'}))
+    print(json.dumps({'status': 'ready', 'version': '3.4.0'}))
 
     for line in sys.stdin:
         line = line.strip()

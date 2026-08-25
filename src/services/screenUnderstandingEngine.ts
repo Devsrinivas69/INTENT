@@ -1,24 +1,26 @@
-// ─── ScreenUnderstandingEngine v3.3 ──────────────────────────────────────────
+// ─── ScreenUnderstandingEngine v3.4 ──────────────────────────────────────────
 // Central multi-tier intelligence layer:
-//   - Strict rejection of application windows, full-screen containers, and root panes.
-//   - Level 1: Visual Canvas Object Detection (center of poster).
-//   - Level 2 & 3: Windows Native OCR & UI Automation for buttons.
-//   - Real-time purple selection border & panel transition verification.
+//   1. Full screen analysis & element inventory before every level
+//   2. Deterministic candidate generation (OpenCV, WinRT OCR, UIA)
+//   3. Composite candidate validation & scoring
+//   4. Strict rejection of application windows, full-screen containers, and root panes
+//   5. Single authoritative coordinate mapping to Electron Overlay Space
+//   6. TargetLock generation
 
 import { coordinateMapper } from './coordinateMapper'
+import { stateTransitionEngine } from './stateTransitionEngine'
 import type {
-  WindowInfo, ScreenMap, TargetCandidate, TargetLock, TargetResult,
+  WindowInfo, ScreenMap, TargetCandidate, TargetLock, TargetResult, CompletionProof,
 } from '../types/screenMap'
-import type { Workflow, WorkflowLevel } from '../types/workflow'
+import type { WorkflowLevel } from '../types/workflow'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const api = (window as any).electronAPI
 
 export class ScreenUnderstandingEngine {
-  private lastScreenshotB64: string | null = null
   private lastWindowInfo: WindowInfo | null = null
 
-  // ── Step 1: Get Window Info ───────────────────────────────────────────────
+  // ── Step 1: Discover Application Window ───────────────────────────────────
 
   async getWindowInfo(application: string): Promise<WindowInfo | null> {
     try {
@@ -34,24 +36,22 @@ export class ScreenUnderstandingEngine {
     }
   }
 
-  // ── Step 2: Bring to Foreground (Scenario 2) ─────────────────────────────
+  // ── Step 2: Bring Window to Foreground ────────────────────────────────────
 
   async bringToForeground(hwnd: number): Promise<boolean> {
     try {
       const result = await api.bringToForeground(hwnd)
       return result?.success ?? false
-    } catch (err) {
+    } catch {
       return false
     }
   }
 
-  // ── Step 3: Full Screen Analysis → ScreenMap ─────────────────────────────
+  // ── Step 3: Full Screen Inventory ─────────────────────────────────────────
 
   async analyzeScreen(winInfo: WindowInfo): Promise<ScreenMap | null> {
     try {
       const screenshot = await api.captureScreen()
-      this.lastScreenshotB64 = screenshot
-
       const raw = await api.analyzeScreen({
         hwnd: winInfo.hwnd,
         application: winInfo.app ?? '',
@@ -75,7 +75,7 @@ export class ScreenUnderstandingEngine {
         elements: raw.elements ?? [],
         element_count: raw.element_count ?? 0,
       }
-    } catch (err) {
+    } catch {
       return null
     }
   }
@@ -88,9 +88,7 @@ export class ScreenUnderstandingEngine {
   ): Promise<TargetResult> {
     try {
       const screenshot: string | null = await api.captureScreen()
-      this.lastScreenshotB64 = screenshot
-
-      const targetType = level.levelNumber === 1 ? 'CANVAS_OBJECT' : 'BUTTON'
+      const targetType = level.targetType || (level.levelNumber === 1 ? 'CANVAS_OBJECT' : 'BUTTON')
 
       // Call Python helper
       const localResult = await api.findTarget({
@@ -111,15 +109,20 @@ export class ScreenUnderstandingEngine {
       if (localResult?.found && localResult.target) {
         const target = localResult.target
 
-        // STRICT VALIDATION: Reject full-screen or window bounds
-        const isGiant = target.width > winInfo.width * 0.75 && target.height > winInfo.height * 0.75
+        // HARD CONTAINER REJECTION: Reject full-screen or window bounds
+        const isGiant = target.width > winInfo.width * 0.70 && target.height > winInfo.height * 0.70
         const isWindowRoot = target.x === 0 && target.y === 0 && target.width >= winInfo.width
 
         if (!isGiant && !isWindowRoot) {
-          const rawPhysicalBounds = { x: target.x, y: target.y, width: target.width, height: target.height }
+          const rawPhysicalBounds = {
+            x: target.x,
+            y: target.y,
+            width: target.width,
+            height: target.height,
+          }
           const overlayBounds = coordinateMapper.physicalToOverlay(rawPhysicalBounds)
 
-          // For Level 1 Canvas Object, place cursor in the center of the image
+          // Center for canvas objects, right below for buttons
           let cursorAnchor: { x: number; y: number }
           if (targetType === 'CANVAS_OBJECT') {
             cursorAnchor = {
@@ -130,29 +133,40 @@ export class ScreenUnderstandingEngine {
             cursorAnchor = coordinateMapper.cursorAnchorFromBounds(overlayBounds)
           }
 
+          const targetLock: TargetLock = {
+            found: true,
+            targetId: `target_${level.id}`,
+            levelId: level.id,
+            text: target.text || level.targetText,
+            type: target.type || targetType,
+            bounds: rawPhysicalBounds,
+            overlayBounds,
+            cursorAnchor,
+            center: {
+              x: Math.round(rawPhysicalBounds.x + rawPhysicalBounds.width / 2),
+              y: Math.round(rawPhysicalBounds.y + rawPhysicalBounds.height / 2),
+            },
+            confidence: target.confidence || 0.90,
+            method: localResult.method || 'local_engine',
+            isStable: true,
+            candidates: localResult.candidates || [],
+            timestamp: Date.now(),
+          }
+
           console.log(
-            `[INTENT] LEVEL: ${level.levelNumber} TARGET: "${target.text}" TYPE: ${targetType} ` +
-            `BOUNDS: [${overlayBounds.x},${overlayBounds.y},${overlayBounds.width},${overlayBounds.height}] ` +
-            `CURSOR: [${cursorAnchor.x},${cursorAnchor.y}] CONFIDENCE: ${(target.confidence * 100).toFixed(0)}%`
+            `[INTENT] LEVEL ${level.levelNumber} LOCKED: "${targetLock.text}" ` +
+            `PHYSICAL: [${rawPhysicalBounds.x},${rawPhysicalBounds.y},${rawPhysicalBounds.width},${rawPhysicalBounds.height}] ` +
+            `OVERLAY: [${overlayBounds.x},${overlayBounds.y},${overlayBounds.width},${overlayBounds.height}] ` +
+            `CURSOR: [${cursorAnchor.x},${cursorAnchor.y}] CONFIDENCE: ${(targetLock.confidence * 100).toFixed(0)}%`
           )
 
-          return {
-            found: true,
-            text: target.text,
-            type: target.type ?? targetType,
-            bounds: overlayBounds,
-            cursorAnchor,
-            confidence: target.confidence,
-            method: localResult.method ?? 'visual_engine',
-            isStable: true,
-            candidates: localResult.candidates ?? [],
-          }
+          return targetLock
         } else {
-          console.warn('[INTENT] TARGET REJECTED: Window container or full-screen bounds detected', target)
+          console.warn('[INTENT] TARGET REJECTED: Full-screen or window container bounds', target)
         }
       }
 
-      // Fallback: Gemini Vision
+      // Gemini Vision Fallback (Only if local detection yielded no match)
       if (screenshot) {
         const visionResult: any = await api.findTargetVision({
           screenshot,
@@ -163,7 +177,7 @@ export class ScreenUnderstandingEngine {
         })
 
         if (visionResult?.found && visionResult.width > 0 && visionResult.height > 0) {
-          const isGiant = visionResult.width > winInfo.width * 0.75 && visionResult.height > winInfo.height * 0.75
+          const isGiant = visionResult.width > winInfo.width * 0.70 && visionResult.height > winInfo.height * 0.70
           if (!isGiant) {
             const rawPhysicalBounds = {
               x: visionResult.x,
@@ -176,17 +190,27 @@ export class ScreenUnderstandingEngine {
               ? { x: Math.round(overlayBounds.x + overlayBounds.width / 2), y: Math.round(overlayBounds.y + overlayBounds.height / 2) }
               : coordinateMapper.cursorAnchorFromBounds(overlayBounds)
 
-            return {
+            const targetLock: TargetLock = {
               found: true,
+              targetId: `target_gemini_${level.id}`,
+              levelId: level.id,
               text: visionResult.targetText || level.targetText,
               type: targetType,
-              bounds: overlayBounds,
+              bounds: rawPhysicalBounds,
+              overlayBounds,
               cursorAnchor,
-              confidence: visionResult.confidence || 0.88,
+              center: {
+                x: Math.round(rawPhysicalBounds.x + rawPhysicalBounds.width / 2),
+                y: Math.round(rawPhysicalBounds.y + rawPhysicalBounds.height / 2),
+              },
+              confidence: visionResult.confidence || 0.85,
               method: 'gemini_vision',
               isStable: true,
               candidates: [],
+              timestamp: Date.now(),
             }
+
+            return targetLock
           }
         }
       }
@@ -201,71 +225,19 @@ export class ScreenUnderstandingEngine {
     }
   }
 
-  // ── Step 5: Verify Level Completion ──────────────────────────────────────
+  // ── Step 5: Capture Baseline Snapshot ─────────────────────────────────────
 
-  async verifyLevelComplete(
-    winInfo: WindowInfo,
-    level: WorkflowLevel,
-    screenshotBefore: string | null,
-  ): Promise<{ completed: boolean; confidence: number; evidence: string; method: string }> {
-    try {
-      const screenshotAfter: string | null = await api.captureScreen()
-
-      const raw = await api.verifyLevel({
-        hwnd: winInfo.hwnd,
-        application: winInfo.app ?? '',
-        level_number: level.levelNumber,
-        condition: level.completionCondition,
-        screenshot_before: screenshotBefore,
-        screenshot_after: screenshotAfter,
-      })
-
-      if (raw?.completed && raw.confidence >= 0.75) {
-        console.log(`[INTENT] LEVEL ${level.levelNumber} VERIFICATION PASSED: ${raw.evidence} (${raw.method})`)
-        return {
-          completed: true,
-          confidence: raw.confidence,
-          evidence: raw.evidence,
-          method: raw.method,
-        }
-      }
-
-      // Gemini Vision Fallback Verification
-      if (screenshotAfter) {
-        const geminiVerify: any = await api.verifyStateChange({
-          screenshotAfter,
-          levelTitle: level.title,
-          completionCondition: level.completionCondition,
-          application: winInfo.app ?? '',
-        })
-        if (geminiVerify?.completed && geminiVerify.confidence >= 0.75) {
-          console.log(`[INTENT] LEVEL ${level.levelNumber} VERIFICATION PASSED via Gemini: ${geminiVerify.evidence}`)
-          return {
-            completed: true,
-            confidence: geminiVerify.confidence,
-            evidence: geminiVerify.evidence || 'Visual state transition confirmed',
-            method: 'gemini_vision',
-          }
-        }
-      }
-
-      return {
-        completed: false,
-        confidence: raw?.confidence ?? 0.3,
-        evidence: raw?.evidence ?? 'Waiting for user action',
-        method: raw?.method ?? 'local',
-      }
-    } catch (err) {
-      return { completed: false, confidence: 0, evidence: String(err), method: 'error' }
-    }
+  async captureBaseline(level: WorkflowLevel, targetLock: TargetLock) {
+    return stateTransitionEngine.captureBaseline(level, targetLock)
   }
 
-  async captureCurrentScreenshot(winInfo: WindowInfo): Promise<string | null> {
-    try {
-      return await api.captureScreen()
-    } catch {
-      return null
-    }
+  // ── Step 6: Verify Level State Transition ─────────────────────────────────
+
+  async verifyLevelTransition(
+    winInfo: WindowInfo,
+    level: WorkflowLevel,
+  ): Promise<{ verified: boolean; proof: CompletionProof | null; reason?: string }> {
+    return stateTransitionEngine.verifyTransition(winInfo, level)
   }
 }
 

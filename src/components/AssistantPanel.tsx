@@ -7,27 +7,12 @@ import { screenUnderstandingEngine } from '../services/screenUnderstandingEngine
 import { coordinateMapper } from '../services/coordinateMapper'
 import { voiceService } from '../services/voice'
 import { getWorkflow } from '../workflows/index'
-import type { IntentResult } from '../types/intent'
+import type { IntentResult, AppState } from '../types/intent'
 import type { Workflow, WorkflowLevel } from '../types/workflow'
-import type { WindowInfo, TargetLock, ScreenMap } from '../types/screenMap'
+import type { WindowInfo, TargetLock, ScreenMap, CompletionProof } from '../types/screenMap'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const api = (window as any).electronAPI
-
-type PanelState =
-  | 'IDLE'
-  | 'LISTENING'
-  | 'UNDERSTANDING'
-  | 'CANVA_BACKGROUND_PROMPT'
-  | 'TASK_SELECTED'
-  | 'SCANNING'
-  | 'LEVEL_ACTIVE'
-  | 'WAITING_FOR_USER'
-  | 'VERIFICATION_UNCERTAIN'
-  | 'TARGET_NOT_FOUND'
-  | 'TASK_COMPLETE'
-  | 'SCREEN_MAP_DEBUG'
-  | 'ERROR'
 
 const APP_LABEL: Record<string, string> = {
   canva: 'CANVA',
@@ -41,7 +26,7 @@ const TASK_LABEL: Record<string, string> = {
 }
 
 export function AssistantPanel() {
-  const [state, setState] = useState<PanelState>('IDLE')
+  const [state, setState] = useState<AppState>('IDLE')
   const [inputText, setInputText] = useState('')
   const [userIntent, setUserIntent] = useState('')
   const [intentResult, setIntentResult] = useState<IntentResult | null>(null)
@@ -50,16 +35,17 @@ export function AssistantPanel() {
   const [windowInfo, setWindowInfo] = useState<WindowInfo | null>(null)
   const [targetLock, setTargetLock] = useState<TargetLock | null>(null)
   const [screenMap, setScreenMap] = useState<ScreenMap | null>(null)
+  const [completionProofs, setCompletionProofs] = useState<CompletionProof[]>([])
   const [isListening, setIsListening] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string>('')
-  const [screenshotBefore, setScreenshotBefore] = useState<string | null>(null)
+  const [showDiagnostics, setShowDiagnostics] = useState(false)
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ── Sync display info with CoordinateMapper ────────────────────────────────
+  // ── Sync display metrics with CoordinateMapper ─────────────────────────────
   useEffect(() => {
     api.getDisplayInfo().then((info: any) => {
       if (info) coordinateMapper.setDisplayMeta(info)
@@ -168,11 +154,11 @@ export function AssistantPanel() {
       }
       setWorkflow(wf)
 
-      // Check target application window status
+      setState('APP_DETECTING')
       const win = await screenUnderstandingEngine.getWindowInfo(result.application)
       setWindowInfo(win)
 
-      // Canva Scenario 2: Canva is open but in the background
+      // Background Window Check (Canva Scenario 2)
       if (result.application === 'canva' && win && !win.is_foreground) {
         setState('CANVA_BACKGROUND_PROMPT')
         return
@@ -186,7 +172,6 @@ export function AssistantPanel() {
     }
   }, [inputText])
 
-  // ── Switch to background Canva window (Scenario 2 Option A) ────────────────
   const handleSwitchToCanva = useCallback(async () => {
     if (!windowInfo) return
     setStatusMessage('Switching to Canva...')
@@ -201,17 +186,28 @@ export function AssistantPanel() {
   // Core Screen Understanding & Guidance Loop
   // ─────────────────────────────────────────────────────────────────────────
 
-  const executeLevel = useCallback(async (wf: Workflow, levelIdx: number) => {
+  const executeLevel = useCallback(async (wf: Workflow, levelIdx: number, proofsAcc: CompletionProof[] = []) => {
+    // ── TASK COMPLETE CHECK (Strict Proof Enforcement) ──────────────────────
     if (levelIdx >= wf.levels.length) {
-      setState('TASK_COMPLETE')
-      voiceService.speak('Done. Task finished.')
-      await api.hideOverlay()
+      const allLevelsPassed = wf.levels.every((lvl) =>
+        proofsAcc.some((p) => p.levelId === lvl.id && p.actionDetected && p.stateChanged)
+      )
+
+      if (allLevelsPassed) {
+        setState('TASK_COMPLETE')
+        voiceService.speak('Done. Task finished.')
+        await api.hideOverlay()
+      } else {
+        console.warn('[AssistantPanel] Premature completion rejected: Missing proofs', proofsAcc)
+        setState('ERROR')
+        setErrorMessage('Could not verify all steps.')
+      }
       return
     }
 
     const currentLevel = wf.levels[levelIdx]
     setCurrentLevelIndex(levelIdx)
-    setState('SCANNING')
+    setState('SCREEN_SCANNING')
     setStatusMessage(`Scanning screen for "${currentLevel.targetText}"...`)
 
     // 1. Refresh window info
@@ -230,11 +226,8 @@ export function AssistantPanel() {
     }
     setWindowInfo(activeWin)
 
-    // Capture screenshot before user action (for screen diff verification)
-    const beforeB64 = await screenUnderstandingEngine.captureCurrentScreenshot(activeWin)
-    setScreenshotBefore(beforeB64)
-
-    // 2. Full Screen Scan + Target Finding (two-scan stability check)
+    // 2. Locate and Lock Target
+    setState('TARGET_SEARCHING')
     const targetResult = await screenUnderstandingEngine.findTarget(activeWin, currentLevel)
 
     if (!targetResult.found) {
@@ -244,21 +237,24 @@ export function AssistantPanel() {
       return
     }
 
-    // 3. Target Confirmed & Stable!
+    // 3. Target Validated & Locked
+    setState('TARGET_LOCKED')
     setTargetLock(targetResult)
-    setState('LEVEL_ACTIVE')
 
-    // 4. Speak voice instruction once
-    voiceService.speak(currentLevel.voiceInstruction)
+    // 4. Capture baseline state BEFORE user action
+    await screenUnderstandingEngine.captureBaseline(currentLevel, targetResult)
 
     // 5. Deploy Intent Cursor on overlayWin
+    setState('LEVEL_ACTIVE')
+    voiceService.speak(currentLevel.voiceInstruction)
+
     await api.showOverlay({
       visible: true,
       levelNumber: currentLevel.levelNumber,
       totalLevels: wf.levels.length,
       targetText: targetResult.text,
       instruction: currentLevel.instruction,
-      bounds: targetResult.bounds,
+      bounds: targetResult.overlayBounds,
       cursorAnchor: targetResult.cursorAnchor,
       status: 'WAITING',
       method: targetResult.method,
@@ -268,42 +264,48 @@ export function AssistantPanel() {
     // 6. Enter WAITING_FOR_USER state
     setState('WAITING_FOR_USER')
 
-    // 7. Schedule non-blocking periodic verification check
-    scheduleVerification(wf, levelIdx, activeWin, beforeB64)
+    // 7. Schedule Reactive Verification Loop (every 1000ms)
+    scheduleVerification(wf, levelIdx, activeWin, proofsAcc)
   }, [windowInfo])
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Step Completion Verification Loop (WAIT ➔ VERIFY ➔ ADVANCE)
+  // Reactive State-Transition Verification Loop
   // ─────────────────────────────────────────────────────────────────────────
 
   const scheduleVerification = useCallback((
     wf: Workflow,
     levelIdx: number,
     win: WindowInfo,
-    beforeShot: string | null,
+    proofsAcc: CompletionProof[],
   ) => {
     if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
 
     verifyTimerRef.current = setTimeout(async () => {
       const currentLevel = wf.levels[levelIdx]
       try {
-        const verification = await screenUnderstandingEngine.verifyLevelComplete(
-          win,
-          currentLevel,
-          beforeShot,
-        )
+        const result = await screenUnderstandingEngine.verifyLevelTransition(win, currentLevel)
 
-        if (verification.completed && verification.confidence >= 0.75) {
-          // Action successfully verified!
-          console.log(`[INTENT] Step ${currentLevel.levelNumber} complete: ${verification.evidence}`)
-          voiceService.speak('Good.')
-          await executeLevel(wf, levelIdx + 1)
+        if (result.verified && result.proof) {
+          // Action detected and verified!
+          console.log(`[INTENT] Step ${currentLevel.levelNumber} VERIFIED:`, result.proof)
+          setState('ACTION_DETECTING')
+
+          setTimeout(() => setState('VERIFYING'), 200)
+
+          const updatedProofs = [...proofsAcc, result.proof]
+          setCompletionProofs(updatedProofs)
+
+          setTimeout(async () => {
+            setState('LEVEL_COMPLETE')
+            voiceService.speak('Good.')
+            await executeLevel(wf, levelIdx + 1, updatedProofs)
+          }, 400)
         } else {
-          // Poll again in 1000ms
-          scheduleVerification(wf, levelIdx, win, beforeShot)
+          // Keep polling every 1000ms
+          scheduleVerification(wf, levelIdx, win, proofsAcc)
         }
       } catch {
-        scheduleVerification(wf, levelIdx, win, beforeShot)
+        scheduleVerification(wf, levelIdx, win, proofsAcc)
       }
     }, 1000)
   }, [executeLevel])
@@ -311,27 +313,19 @@ export function AssistantPanel() {
   const handleStartTask = useCallback(async () => {
     if (!workflow) return
     if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
-    await executeLevel(workflow, 0)
+    setCompletionProofs([])
+    await executeLevel(workflow, 0, [])
   }, [workflow, executeLevel])
 
   const handleRescan = useCallback(async () => {
     if (!workflow) return
     if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
-    await executeLevel(workflow, currentLevelIndex)
-  }, [workflow, currentLevelIndex, executeLevel])
+    await executeLevel(workflow, currentLevelIndex, completionProofs)
+  }, [workflow, currentLevelIndex, completionProofs, executeLevel])
 
-  // Decision 2 Option A: Manual confirmation if verification is uncertain
-  const handleConfirmStep = useCallback(async () => {
-    if (!workflow) return
-    if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
-    voiceService.speak('Good.')
-    await executeLevel(workflow, currentLevelIndex + 1)
-  }, [workflow, currentLevelIndex, executeLevel])
-
-  // Developer command: Analyze screen and inspect elements
   const handleDebugAnalyzeScreen = useCallback(async () => {
-    setState('SCANNING')
-    setStatusMessage('Running complete screen analysis...')
+    setState('SCREEN_SCANNING')
+    setStatusMessage('Running complete screen inventory...')
     const win = await screenUnderstandingEngine.getWindowInfo('canva') || {
       found: true, app: 'canva', title: 'Desktop', hwnd: 0,
       x: 0, y: 0, width: window.screen.width, height: window.screen.height, scale_factor: 1.0, is_foreground: true,
@@ -353,6 +347,7 @@ export function AssistantPanel() {
     setCurrentLevelIndex(0)
     setTargetLock(null)
     setScreenMap(null)
+    setCompletionProofs([])
     setErrorMessage(null)
   }, [])
 
@@ -382,6 +377,13 @@ export function AssistantPanel() {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowDiagnostics((d) => !d)}
+              className="text-white/40 hover:text-white text-[10px] font-mono px-1 transition-colors"
+              title="Toggle Diagnostics"
+            >
+              {showDiagnostics ? '▲' : '▼'} DIAG
+            </button>
+            <button
               onClick={handleClose}
               className="text-white/40 hover:text-white transition-colors text-sm font-mono leading-none px-1"
               title="Close (Esc)"
@@ -391,11 +393,27 @@ export function AssistantPanel() {
           </div>
         </div>
 
+        {/* ── Diagnostics Drawer ────────────────────────────────────────────── */}
+        {showDiagnostics && (
+          <div className="no-drag border-b border-white/10 bg-white/[0.02] p-2.5 font-mono text-[9px] text-white/70 space-y-1 select-none">
+            <div className="flex justify-between text-white font-semibold">
+              <span>DIAGNOSTICS</span>
+              <span className="text-white/50">{state}</span>
+            </div>
+            <div>APP: <span className="text-white">{workflow?.application.toUpperCase() || 'NONE'}</span></div>
+            <div>TARGET: <span className="text-white">{targetLock?.text || 'NONE'}</span></div>
+            <div>METHOD: <span className="text-white">{targetLock?.method.toUpperCase() || 'NONE'}</span></div>
+            <div>PHYSICAL: <span className="text-white/80">{targetLock ? `${targetLock.bounds.x},${targetLock.bounds.y} (${targetLock.bounds.width}×${targetLock.bounds.height})` : 'N/A'}</span></div>
+            <div>OVERLAY: <span className="text-white/80">{targetLock ? `${targetLock.overlayBounds.x},${targetLock.overlayBounds.y}` : 'N/A'}</span></div>
+            <div>PROOFS: <span className="text-white">{completionProofs.length} / {workflow?.levels.length || 4}</span></div>
+          </div>
+        )}
+
         {/* ── Main Content Area ────────────────────────────────────────────── */}
         <div className="no-drag flex-1 overflow-y-auto px-4 py-4 space-y-4">
           <AnimatePresence mode="wait">
 
-            {/* 1. IDLE & LISTENING & UNDERSTANDING STATE */}
+            {/* 1. IDLE & LISTENING & UNDERSTANDING */}
             {(state === 'IDLE' || state === 'LISTENING' || state === 'UNDERSTANDING') && (
               <motion.div
                 key="idle-view"
@@ -453,7 +471,6 @@ export function AssistantPanel() {
                   </div>
                 </div>
 
-                {/* Developer debug button */}
                 <button
                   onClick={handleDebugAnalyzeScreen}
                   className="w-full text-white/30 hover:text-white/70 text-[9px] font-mono border border-white/10 rounded-[2px] py-1 transition-colors uppercase tracking-widest"
@@ -463,7 +480,7 @@ export function AssistantPanel() {
               </motion.div>
             )}
 
-            {/* 2. CANVA SCENARIO 2 (BACKGROUND PROMPT) */}
+            {/* 2. CANVA BACKGROUND WINDOW PROMPT */}
             {state === 'CANVA_BACKGROUND_PROMPT' && (
               <motion.div
                 key="canva-prompt-view"
@@ -493,7 +510,7 @@ export function AssistantPanel() {
               </motion.div>
             )}
 
-            {/* 3. TASK_SELECTED STATE */}
+            {/* 3. TASK SELECTED */}
             {state === 'TASK_SELECTED' && workflow && intentResult?.supported && (
               <motion.div
                 key="task-selected-view"
@@ -537,8 +554,8 @@ export function AssistantPanel() {
               </motion.div>
             )}
 
-            {/* 4. SCANNING STATE */}
-            {state === 'SCANNING' && (
+            {/* 4. SCANNING / TARGET SEARCHING */}
+            {(state === 'SCREEN_SCANNING' || state === 'TARGET_SEARCHING' || state === 'APP_DETECTING') && (
               <motion.div
                 key="scanning-view"
                 initial={{ opacity: 0 }}
@@ -554,8 +571,8 @@ export function AssistantPanel() {
               </motion.div>
             )}
 
-            {/* 5. LEVEL_ACTIVE & WAITING_FOR_USER STATE */}
-            {(state === 'LEVEL_ACTIVE' || state === 'WAITING_FOR_USER') && workflow && currentLevel && (
+            {/* 5. WAITING_FOR_USER / LEVEL_ACTIVE / VERIFYING */}
+            {(state === 'LEVEL_ACTIVE' || state === 'WAITING_FOR_USER' || state === 'ACTION_DETECTING' || state === 'VERIFYING' || state === 'LEVEL_COMPLETE') && workflow && currentLevel && (
               <motion.div
                 key={`level-view-${currentLevelIndex}`}
                 initial={{ opacity: 0 }}
@@ -580,7 +597,10 @@ export function AssistantPanel() {
 
                   <div className="flex items-center gap-2 pt-2 border-t border-white/10 text-white/60 text-[10px] tracking-wider uppercase">
                     <span className="animate-pulse text-white">●</span>
-                    <span>WAITING FOR YOU — Click the highlighted element</span>
+                    {state === 'WAITING_FOR_USER' && <span>WAITING FOR YOU — Click the highlighted element</span>}
+                    {state === 'ACTION_DETECTING' && <span>ACTION DETECTED — Checking result...</span>}
+                    {state === 'VERIFYING' && <span>VERIFYING STATE TRANSITION...</span>}
+                    {state === 'LEVEL_COMPLETE' && <span className="text-white font-semibold">✓ LEVEL COMPLETE</span>}
                   </div>
                 </div>
 
@@ -643,7 +663,7 @@ export function AssistantPanel() {
               </motion.div>
             )}
 
-            {/* 7. SCREEN MAP DEBUG INVENTORY VIEW */}
+            {/* 7. SCREEN MAP DEBUG */}
             {state === 'SCREEN_MAP_DEBUG' && (
               <motion.div
                 key="debug-view"
@@ -665,7 +685,7 @@ export function AssistantPanel() {
                         <span className="text-white/50">{el.type}</span>
                       </div>
                       <div className="text-white/40 flex justify-between">
-                        <span>Bounds: {el.x},{el.y} ({el.width}×{el.height})</span>
+                        <span>Bounds: {el.bounds.x},{el.bounds.y} ({el.bounds.width}×{el.bounds.height})</span>
                         <span>{(el.confidence * 100).toFixed(0)}% • {el.source}</span>
                       </div>
                     </div>
@@ -678,7 +698,7 @@ export function AssistantPanel() {
               </motion.div>
             )}
 
-            {/* 8. TASK_COMPLETE STATE */}
+            {/* 8. TASK COMPLETE */}
             {state === 'TASK_COMPLETE' && (
               <motion.div
                 key="complete-view"
@@ -693,7 +713,7 @@ export function AssistantPanel() {
                 <div className="space-y-1">
                   <p className="text-white font-semibold text-sm tracking-wider uppercase">TASK COMPLETE</p>
                   <p className="text-white/60 text-xs font-sans">
-                    All levels verified successfully.
+                    All {workflow?.levels.length || 4} levels verified with cryptographic proof.
                   </p>
                 </div>
 
@@ -706,7 +726,7 @@ export function AssistantPanel() {
               </motion.div>
             )}
 
-            {/* 9. ERROR STATE */}
+            {/* 9. ERROR */}
             {state === 'ERROR' && (
               <motion.div
                 key="error-view"
@@ -735,7 +755,7 @@ export function AssistantPanel() {
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="no-drag px-4 py-2.5 border-t border-white/10 flex items-center justify-between text-white/30 font-mono text-[9px] uppercase tracking-wider">
           <span>INTENT • PHYSICAL GUIDANCE</span>
-          {(state === 'LEVEL_ACTIVE' || state === 'WAITING_FOR_USER' || state === 'SCANNING') && (
+          {(state === 'LEVEL_ACTIVE' || state === 'WAITING_FOR_USER' || state === 'SCREEN_SCANNING') && (
             <button onClick={handleReset} className="hover:text-white text-white/50 transition-colors">
               CANCEL
             </button>

@@ -1,11 +1,12 @@
 """
-OpenCV Detector
+OpenCV Detector — Deterministic Vision & State Transition Engine
 Provides:
-1. CanvasRegionDetector — isolates Canva central design workspace from browser chrome & sidebars
-2. CanvasObjectDetector — finds the poster/image on the canvas
-3. CanvaSelectionDetector — detects Canva's purple selection outline (#8B3DFF) and resize handles
-4. PanelDetector — detects when Edit Photo / Magic Studio sidebar panel opens
-5. Screen diff analysis
+1. detect_canva_workspace — isolates Canva design workspace from browser chrome & sidebars
+2. detect_canvas_image_object — isolates central design poster/image on canvas
+3. detect_canva_selection_state — detects Canva's signature purple selection outline (#8B3DFF) and verifies IoU with target
+4. detect_edit_photo_panel — detects opening of left Magic Studio / Edit Photo panel
+5. detect_animation_panel — detects opening of left Animation styles panel
+6. verify_canvas_background_removed — compares baseline vs after-action canvas pixels
 """
 
 import base64
@@ -16,6 +17,8 @@ import numpy as np
 def b64_to_cv2(b64_image: str):
     """Decode base64 PNG/JPEG to OpenCV BGR image."""
     try:
+        if not b64_image:
+            return None
         if ',' in b64_image:
             b64_image = b64_image.split(',', 1)[1]
         img_bytes = base64.b64decode(b64_image)
@@ -25,13 +28,30 @@ def b64_to_cv2(b64_image: str):
         return None
 
 
-# ─── 1. Canvas Region Detector ────────────────────────────────────────────────
+def calculate_iou(boxA: dict, boxB: dict) -> float:
+    """Calculate Intersection over Union (IoU) of two bounding boxes {x, y, width, height}."""
+    xA = max(boxA['x'], boxB['x'])
+    yA = max(boxA['y'], boxB['y'])
+    xB = min(boxA['x'] + boxA['width'], boxB['x'] + boxB['width'])
+    yB = min(boxA['y'] + boxA['height'], boxB['y'] + boxB['height'])
+
+    interWidth = max(0, xB - xA)
+    interHeight = max(0, yB - yA)
+    interArea = interWidth * interHeight
+
+    boxAArea = boxA['width'] * boxA['height']
+    boxBArea = boxB['width'] * boxB['height']
+
+    unionArea = boxAArea + boxBArea - interArea
+    return interArea / float(unionArea) if unionArea > 0 else 0.0
+
+
+# ─── 1. Canvas Workspace Isolation ───────────────────────────────────────────
 
 def detect_canva_workspace(img):
     """
-    Excludes browser top bar (0-110px), left sidebar (0-72px),
-    right panel area (width-380px to width), and bottom bar (height-60px).
-    Returns workspace bounding box (x, y, w, h).
+    Excludes browser top chrome (0-110px), left sidebar (0-72px),
+    right panel area (width-390px to width), and bottom bar (height-60px).
     """
     h, w = img.shape[:2]
     ws_x = 72
@@ -46,7 +66,7 @@ def detect_canva_workspace(img):
 def detect_canvas_image_object(b64_image: str, win_x: int = 0, win_y: int = 0, scale_factor: float = 1.0) -> dict | None:
     """
     Finds the prominent central design canvas/poster in Canva editor.
-    Returns absolute physical desktop bounding box for the visual image object.
+    Returns physical desktop bounding box for the visual image object.
     """
     img = b64_to_cv2(b64_image)
     if img is None:
@@ -77,26 +97,25 @@ def detect_canvas_image_object(b64_image: str, win_x: int = 0, win_y: int = 0, s
     for cnt in contours:
         x, y, cw, ch = cv2.boundingRect(cnt)
         area = cw * ch
-        # Must be between 8% and 80% of the workspace area
+        # Must be between 8% and 85% of workspace area
         if area < total_ws_area * 0.08 or area > total_ws_area * 0.85:
             continue
-        # Typical document/poster aspect ratios
         aspect = cw / max(1, ch)
         if 0.3 < aspect < 3.0:
             if area > max_area:
                 max_area = area
                 best_box = {
-                    'x': int((ws['x'] + x + win_x)),
-                    'y': int((ws['y'] + y + win_y)),
+                    'x': int(ws['x'] + x + win_x),
+                    'y': int(ws['y'] + y + win_y),
                     'width': int(cw),
                     'height': int(ch),
                     'confidence': 0.94,
                     'type': 'CANVAS_OBJECT',
                     'text': 'Image on Canvas',
-                    'source': 'canvas_detector',
+                    'source': 'opencv_canvas',
                 }
 
-    # If edge detection didn't isolate it, use central 50% of the workspace
+    # Fallback to workspace center if contour was not closed
     if not best_box:
         cw = int(ws['width'] * 0.45)
         ch = int(ws['height'] * 0.65)
@@ -110,19 +129,19 @@ def detect_canvas_image_object(b64_image: str, win_x: int = 0, win_y: int = 0, s
             'confidence': 0.88,
             'type': 'CANVAS_OBJECT',
             'text': 'Image on Canvas',
-            'source': 'canvas_workspace_center',
+            'source': 'opencv_canvas_center',
         }
 
     return best_box
 
 
-# ─── 3. Canva Selection Detector (Purple Border Detection) ───────────────────
+# ─── 3. Canva Selection Detector (Purple Outline with IoU Check) ─────────────
 
-def detect_canva_selection_state(b64_image: str, win_x: int = 0, win_y: int = 0) -> dict:
+def detect_canva_selection_state(b64_image: str, target_bounds: dict = None, win_x: int = 0, win_y: int = 0) -> dict:
     """
     Detects Canva's signature purple selection outline (#8B3DFF / #7D2AE8)
     around the selected element.
-    Returns { selected: bool, bounds: dict, confidence: float, method: str }
+    If target_bounds is provided, calculates IoU to ensure the selection is for the intended target.
     """
     img = b64_to_cv2(b64_image)
     if img is None:
@@ -130,36 +149,56 @@ def detect_canva_selection_state(b64_image: str, win_x: int = 0, win_y: int = 0)
 
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-    # Canva Purple selection border in OpenCV HSV (H: 125-155, S: 100-255, V: 120-255)
-    lower_purple = np.array([125, 100, 120])
+    # Canva Purple selection border in OpenCV HSV (H: 120-160, S: 90-255, V: 100-255)
+    lower_purple = np.array([120, 90, 100])
     upper_purple = np.array([160, 255, 255])
 
     mask = cv2.inRange(hsv, lower_purple, upper_purple)
 
-    # Filter out tiny noise
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     mask_clean = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
     contours, _ = cv2.findContours(mask_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    best_match = None
+    best_iou = 0.0
+
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
-        # Selection border around an image/element must be reasonably large
-        if w >= 80 and h >= 80:
-            # Check contour perimeter vs area (it's an outline / border)
-            return {
-                'selected': True,
-                'bounds': {
-                    'x': int(x + win_x),
-                    'y': int(y + win_y),
-                    'width': int(w),
-                    'height': int(h),
-                },
-                'confidence': 0.96,
-                'method': 'visual_selection_border',
+        if w >= 60 and h >= 60:
+            found_box = {
+                'x': int(x + win_x),
+                'y': int(y + win_y),
+                'width': int(w),
+                'height': int(h),
             }
 
-    # Also check if Canva top toolbar showed "Edit" or "Edit photo"
+            if target_bounds:
+                iou = calculate_iou(found_box, target_bounds)
+                if iou > best_iou:
+                    best_iou = iou
+                    best_match = found_box
+            else:
+                best_match = found_box
+                best_iou = 1.0
+
+    if best_match:
+        # If target bounds were provided, require IoU >= 0.40 to prevent false-positives on unrelated elements
+        if target_bounds and best_iou < 0.40:
+            return {
+                'selected': False,
+                'confidence': 0.3,
+                'reason': f'Purple outline detected but does not match target image (IoU={best_iou:.2f})',
+            }
+
+        return {
+            'selected': True,
+            'bounds': best_match,
+            'confidence': 0.96,
+            'method': 'visual_selection_border',
+            'iou': round(best_iou, 3),
+        }
+
     return {'selected': False, 'confidence': 0.0}
 
 
@@ -168,7 +207,7 @@ def detect_canva_selection_state(b64_image: str, win_x: int = 0, win_y: int = 0)
 def detect_edit_photo_panel(b64_image: str, ocr_texts: list) -> dict:
     """
     Checks if the left Edit Photo / Magic Studio sidebar has opened.
-    Looks for keywords: 'BG Remover', 'Background Remover', 'Adjust', 'Filters', 'Effects'.
+    Matches tool keywords: 'bg remover', 'background remover', 'magic studio', 'adjust', 'filters', 'effects'.
     """
     lower_texts = [t.lower() for t in ocr_texts]
     keywords = ['bg remover', 'background remover', 'magic studio', 'adjust', 'filters', 'effects']
@@ -179,16 +218,90 @@ def detect_edit_photo_panel(b64_image: str, ocr_texts: list) -> dict:
             'panel_open': True,
             'confidence': 0.95,
             'matches': matches,
-            'method': 'edit_photo_panel_ocr'
+            'method': 'edit_photo_panel_ocr',
         }
 
     return {'panel_open': False, 'confidence': 0.0}
 
 
-# ─── 5. Screen Diff ──────────────────────────────────────────────────────────
+# ─── 5. Animation Panel Appearance Detector ──────────────────────────────────
+
+def detect_animation_panel(ocr_texts: list) -> dict:
+    """
+    Checks if the left Animation styles sidebar has opened.
+    Matches animation presets: 'fade', 'pan', 'rise', 'pop', 'wipe', 'breathe', 'page animations', 'photo animations'.
+    """
+    lower_texts = [t.lower() for t in ocr_texts]
+    keywords = ['fade', 'pan', 'rise', 'pop', 'wipe', 'breathe', 'page animations', 'photo animations', 'element animations']
+
+    matches = [k for k in keywords if any(k in t for t in lower_texts)]
+    if matches:
+        return {
+            'panel_open': True,
+            'confidence': 0.95,
+            'matches': matches,
+            'method': 'animation_panel_ocr',
+        }
+
+    return {'panel_open': False, 'confidence': 0.0}
+
+
+# ─── 6. Verify Canvas Background Removal Result ──────────────────────────────
+
+def verify_canvas_background_removed(b64_baseline: str, b64_current: str, target_bounds: dict = None) -> dict:
+    """
+    Compares the canvas area between baseline and current state to verify background removal.
+    """
+    img_base = b64_to_cv2(b64_baseline)
+    img_curr = b64_to_cv2(b64_current)
+    if img_base is None or img_curr is None:
+        return {'completed': False, 'confidence': 0.0}
+
+    if img_base.shape != img_curr.shape:
+        h, w = img_base.shape[:2]
+        img_curr = cv2.resize(img_curr, (w, h))
+
+    # Crop to target region if provided
+    if target_bounds:
+        tx = max(0, target_bounds['x'])
+        ty = max(0, target_bounds['y'])
+        tw = min(img_base.shape[1] - tx, target_bounds['width'])
+        th = min(img_base.shape[0] - ty, target_bounds['height'])
+        crop_base = img_base[ty:ty+th, tx:tx+tw]
+        crop_curr = img_curr[ty:ty+th, tx:tx+tw]
+    else:
+        crop_base = img_base
+        crop_curr = img_curr
+
+    if crop_base.size == 0 or crop_curr.size == 0:
+        return {'completed': False, 'confidence': 0.0}
+
+    gray_base = cv2.cvtColor(crop_base, cv2.COLOR_BGR2GRAY)
+    gray_curr = cv2.cvtColor(crop_curr, cv2.COLOR_BGR2GRAY)
+
+    diff = cv2.absdiff(gray_base, gray_curr)
+    _, thresh = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
+
+    total_pixels = gray_base.shape[0] * gray_base.shape[1]
+    changed_pixels = int(np.sum(thresh > 0))
+    ratio = changed_pixels / max(1, total_pixels)
+
+    # Significant change in target region (> 5% of pixels changed)
+    if ratio > 0.05:
+        return {
+            'completed': True,
+            'confidence': 0.94,
+            'evidence': f'Canvas visual transformation confirmed ({ratio*100:.1f}% region pixels modified)',
+            'method': 'canvas_pixel_diff',
+        }
+
+    return {'completed': False, 'confidence': 0.3}
+
+
+# ─── 7. General Screen Diff ──────────────────────────────────────────────────
 
 def compute_screen_diff(b64_before: str, b64_after: str, threshold: int = 25) -> dict:
-    """Compare two screenshots to detect user interaction state change."""
+    """Compare two screenshots to detect UI state transition."""
     img_before = b64_to_cv2(b64_before)
     img_after = b64_to_cv2(b64_after)
     if img_before is None or img_after is None:

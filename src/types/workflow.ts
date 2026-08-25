@@ -1,4 +1,5 @@
 import { SupportedApplication, SupportedTask } from './intent'
+import { CompletionProof } from './screenMap'
 
 // ─── Target Type ─────────────────────────────────────────────────────────────
 
@@ -34,6 +35,8 @@ export interface WorkflowLevel {
     | 'excel_insert_tab'
     | 'excel_chart'
     | 'visual_state_change'
+  requiredEvidence?: string[]
+  completionProof?: CompletionProof | null
 }
 
 // ─── Workflow ─────────────────────────────────────────────────────────────────

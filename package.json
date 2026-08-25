@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "package": "npm run build && electron-builder --win",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "audit:intent": "python scripts/audit_intent.py"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
