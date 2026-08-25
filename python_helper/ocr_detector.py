@@ -26,7 +26,8 @@ def normalize_text(text: str) -> str:
 
 
 SYNONYM_GROUPS = [
-    {'bg remover', 'background remover', 'remove background', 'background removal', 'magic studio', 'effects', 'erase'},
+    {'bg remover', 'background remover', 'remove background', 'background removal', 'bg remove', 'eraser'},
+    {'magic studio', 'magic edit', 'magic expand', 'effects', 'photo editor'},
     {'edit photo', 'edit image', 'photo editor', 'effects', 'adjust', 'filter', 'tools'},
     {'animate', 'animation', 'add animation', 'fade', 'pan', 'rise', 'pop', 'motion'},
     {'insert', 'insert tab', 'charts', 'recommended charts', 'column', 'bar', 'pie'},
@@ -50,10 +51,10 @@ def text_similarity(a: str, b: str) -> float:
     if a_n in b_n or b_n in a_n:
         return 0.92
 
-    # Synonym group match
+    # Synonym group match (exact membership)
     for group in SYNONYM_GROUPS:
         if any(g in a_n for g in group) and any(g in b_n for g in group):
-            return 0.90
+            return 0.88
 
     # Word overlap
     a_words = set(a_n.split())
@@ -143,7 +144,6 @@ def ocr_full_image(b64_image: str, win_x: int = 0, win_y: int = 0, scale_factor:
 
         results = []
         for item in items:
-            # Physical pixel coords relative to whole screen
             px_x = item['x'] + win_x
             px_y = item['y'] + win_y
             px_w = max(item['width'], 20)
