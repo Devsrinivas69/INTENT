@@ -378,14 +378,35 @@ If unsupported: {"supported":false,"message":"This MVP supports Canva background
   }
 })
 
+const CANVA_LAYOUT_SCHEMA = `
+CANVA EDITOR LAYOUT GROUNDING:
+- Top Navigation Bar: y: 0 to 60px (File, Resize, Title, Share, Export)
+- Top Contextual Floating Toolbar: y: 60px to 120px (Appears when an element is selected: "Edit photo" / "Edit", Color swatch, "Animate", "Position", "Transparency", "Lock")
+- Left Navigation Sidebar: x: 0 to 72px (Design/Templates, Elements, Text, Brand, Uploads, Draw, Projects, Apps)
+- Left Tools / Effects Panel: x: 72px to 400px (Opens when tool is clicked: "BG Remover", "Magic Studio", "Filters", "Adjust", "Effects", "Animations: Fade, Pan, Rise, Pop")
+- Central Workspace: x: 72px to (width - 380px), y: 110px to (height - 60px)
+- Design Canvas / Poster: The rectangular document in the center of the workspace.
+- Selection Visual Indicator: When selected, Canva draws a bright purple outline (#8B3DFF) around the element with white resize handles.
+`
+
+const EXCEL_LAYOUT_SCHEMA = `
+EXCEL WORKBOOK LAYOUT GROUNDING:
+- Title Bar & Quick Access: Top 0 to 40px
+- Ribbon Tabs: y: 40px to 75px ("File", "Home", "Insert", "Page Layout", "Formulas", "Data", "Review", "View")
+- Ribbon Tools / Groups: y: 75px to 160px (Inside Insert tab: Tables, Illustrations, Add-ins, Charts: "Recommended Charts", Column, Bar, Pie)
+- Formula Bar: y: 160px to 195px
+- Spreadsheet Grid: Center workspace with rows 1..N and columns A..Z
+- Chart Object: Floating chart container inserted over grid with legend, title, and series bars/columns.
+`
+
 // ─── IPC: Gemini — Candidate Disambiguation ──────────────────────────────────
-// Given candidate bounding boxes detected locally, Gemini selects the best match.
 
 ipcMain.handle('gemini:disambiguate', async (_, params: {
   candidates: Array<{ index: number; text: string; x: number; y: number; width: number; height: number }>
   levelTitle: string
   targetText: string
   targetDescription: string
+  application: string
   screenshot: string | null
 }) => {
   if (!genAI || !params.candidates.length) {
@@ -399,19 +420,24 @@ ipcMain.handle('gemini:disambiguate', async (_, params: {
       .map((c) => `[Index ${c.index}] "${c.text}" at (x:${c.x}, y:${c.y}, w:${c.width}, h:${c.height})`)
       .join('\n')
 
-    const prompt = `You are disambiguating UI control candidates for INTENT desktop guidance assistant.
+    const layoutContext = params.application === 'excel' ? EXCEL_LAYOUT_SCHEMA : CANVA_LAYOUT_SCHEMA
+
+    const prompt = `You are a precision UI grounding engine for INTENT desktop guidance assistant.
+
+${layoutContext}
 
 Task / Current Level: "${params.levelTitle}"
 Target Label: "${params.targetText}"
 Description: "${params.targetDescription}"
 
-Locally detected candidates:
+Locally detected physical candidates:
 ${candidateList}
 
-Which candidate index best matches the target control for this task?
+Which candidate index corresponds to the required target control for this task?
+(Remember: NEVER pick full-window containers or titlebars. Pick the actual button or canvas element).
 
 RESPONSE FORMAT (JSON ONLY):
-{"chosenIndex": 0, "reasoning": "Index 0 exactly matches the requested button"}`
+{"chosenIndex": 0, "reasoning": "Index 0 matches the contextual toolbar button"}`
 
     const contents: any[] = [prompt]
     if (params.screenshot) {
@@ -444,19 +470,22 @@ ipcMain.handle('gemini:find-target-vision', async (_, params: {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
     const base64 = params.screenshot.replace(/^data:image\/(png|jpeg|webp);base64,/, '')
+    const layoutContext = params.application === 'excel' ? EXCEL_LAYOUT_SCHEMA : CANVA_LAYOUT_SCHEMA
 
     const prompt = `You are a precision UI detector for INTENT desktop guidance assistant.
+
+${layoutContext}
 
 Application: ${params.application}
 Current Step: "${params.levelTitle}"
 Target Label: "${params.targetText}"
 Target Description: "${params.targetDescription}"
 
-Examine the screenshot carefully. Find the UI element described.
-Return bounding box in image pixel coordinates (x, y, width, height from top-left of image).
+Examine the screenshot carefully. Find the exact visual UI element described.
+Do NOT return the entire application window (e.g. 0,0,1280,672). Return the exact bounding box of the physical button or canvas object in image pixels.
 
 RESPONSE FORMAT (JSON ONLY):
-{"found": true, "targetText": "${params.targetText}", "x": 560, "y": 340, "width": 400, "height": 300, "confidence": 0.88}`
+{"found": true, "targetText": "${params.targetText}", "x": 540, "y": 190, "width": 270, "height": 360, "confidence": 0.92}`
 
     const result = await model.generateContent([
       prompt,
@@ -483,17 +512,23 @@ ipcMain.handle('gemini:verify-state', async (_, params: {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
     const base64 = params.screenshotAfter.replace(/^data:image\/(png|jpeg|webp);base64,/, '')
+    const layoutContext = params.application === 'excel' ? EXCEL_LAYOUT_SCHEMA : CANVA_LAYOUT_SCHEMA
 
     const prompt = `You are a step completion validator for INTENT desktop guidance assistant.
+
+${layoutContext}
 
 Application: ${params.application}
 Level: "${params.levelTitle}"
 Condition to verify: "${params.completionCondition}"
 
-Look at the screenshot and determine if the user performed this action.
+Look at the screenshot and determine if the user successfully completed this step.
+For Canva Level 1: Look for purple selection border around the image or top contextual toolbar.
+For Canva Level 2: Look for Edit Photo / Magic Studio left sidebar panel open.
+For Canva Level 3: Look for BG Remover processing or transparent background.
 
 RESPONSE FORMAT (JSON ONLY):
-{"completed": true, "confidence": 0.90, "evidence": "Observed the expected panel open"}`
+{"completed": true, "confidence": 0.94, "evidence": "Canva image is selected with purple border outline and top toolbar"}`
 
     const result = await model.generateContent([
       prompt,
