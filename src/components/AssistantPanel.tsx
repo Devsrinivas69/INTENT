@@ -295,16 +295,17 @@ export function AssistantPanel() {
 
         if (verification.completed && verification.confidence >= 0.75) {
           // Action successfully verified!
+          console.log(`[INTENT] Step ${currentLevel.levelNumber} complete: ${verification.evidence}`)
           voiceService.speak('Good.')
           await executeLevel(wf, levelIdx + 1)
         } else {
-          // Keep waiting quietly without advancing
+          // Poll again in 1000ms
           scheduleVerification(wf, levelIdx, win, beforeShot)
         }
       } catch {
         scheduleVerification(wf, levelIdx, win, beforeShot)
       }
-    }, 4000)
+    }, 1000)
   }, [executeLevel])
 
   const handleStartTask = useCallback(async () => {

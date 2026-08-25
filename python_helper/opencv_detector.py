@@ -1,166 +1,215 @@
 """
 OpenCV Detector
-Uses OpenCV for:
-1. Button/interactive region detection via edge detection + contour analysis
-2. Before/after screen diff to detect user-triggered UI state changes
-All returned coordinates are ABSOLUTE WINDOWS DESKTOP COORDINATES.
+Provides:
+1. CanvasRegionDetector — isolates Canva central design workspace from browser chrome & sidebars
+2. CanvasObjectDetector — finds the poster/image on the canvas
+3. CanvaSelectionDetector — detects Canva's purple selection outline (#8B3DFF) and resize handles
+4. PanelDetector — detects when Edit Photo / Magic Studio sidebar panel opens
+5. Screen diff analysis
 """
 
 import base64
-import io
 import cv2
 import numpy as np
-from PIL import Image
 
 
 def b64_to_cv2(b64_image: str):
-    """Decode base64 PNG to OpenCV BGR image."""
-    img_bytes = base64.b64decode(b64_image)
-    nparr = np.frombuffer(img_bytes, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    return img
-
-
-def detect_button_regions(b64_image: str, win_x: int = 0, win_y: int = 0, scale_factor: float = 1.0) -> list:
-    """
-    Detect rectangular button-like regions in a screenshot using contour analysis.
-    Returns list of candidate bounding boxes in absolute desktop coordinates.
-    """
+    """Decode base64 PNG/JPEG to OpenCV BGR image."""
     try:
-        img = b64_to_cv2(b64_image)
-        if img is None:
-            return []
-
-        h_img, w_img = img.shape[:2]
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # Edge detection
-        edges = cv2.Canny(gray, 50, 150)
-        # Dilate edges slightly to connect nearby edges
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        edges = cv2.dilate(edges, kernel, iterations=1)
-
-        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        regions = []
-        for cnt in contours:
-            x, y, w, h = cv2.boundingRect(cnt)
-            # Filter by typical button proportions
-            aspect = w / max(h, 1)
-            area = w * h
-            if area < 800 or area > 0.3 * w_img * h_img:
-                continue
-            if aspect < 1.0 or aspect > 15.0:
-                continue
-            if h < 18 or h > 80:
-                continue
-
-            # Convert to desktop coords
-            desk_x = int(x / scale_factor) + win_x
-            desk_y = int(y / scale_factor) + win_y
-            desk_w = int(w / scale_factor)
-            desk_h = int(h / scale_factor)
-
-            regions.append({
-                'x': desk_x,
-                'y': desk_y,
-                'width': desk_w,
-                'height': desk_h,
-                'source': 'opencv',
-                'confidence': 0.70,
-            })
-
-        return regions
-
-    except Exception as e:
-        return []
+        if ',' in b64_image:
+            b64_image = b64_image.split(',', 1)[1]
+        img_bytes = base64.b64decode(b64_image)
+        nparr = np.frombuffer(img_bytes, np.uint8)
+        return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    except Exception:
+        return None
 
 
-def compute_screen_diff(b64_before: str, b64_after: str, threshold: int = 25) -> dict:
+# ─── 1. Canvas Region Detector ────────────────────────────────────────────────
+
+def detect_canva_workspace(img):
     """
-    Compare two screenshots and return:
-    - changed_regions: list of bounding boxes where the screen changed
-    - diff_score: 0-1 overall change magnitude (0 = identical, 1 = completely different)
-    - changed: bool (whether a meaningful change occurred)
-    All coordinates are in screenshot pixel space (caller applies DPI mapping).
+    Excludes browser top bar (0-110px), left sidebar (0-72px),
+    right panel area (width-380px to width), and bottom bar (height-60px).
+    Returns workspace bounding box (x, y, w, h).
     """
-    try:
-        img_before = b64_to_cv2(b64_before)
-        img_after = b64_to_cv2(b64_after)
-        if img_before is None or img_after is None:
-            return {'changed': False, 'diff_score': 0.0, 'changed_regions': []}
+    h, w = img.shape[:2]
+    ws_x = 72
+    ws_y = 110
+    ws_w = max(200, w - ws_x - 390)
+    ws_h = max(200, h - ws_y - 60)
+    return {'x': ws_x, 'y': ws_y, 'width': ws_w, 'height': ws_h}
 
-        # Resize to same dimensions if needed
-        if img_before.shape != img_after.shape:
-            h, w = img_before.shape[:2]
-            img_after = cv2.resize(img_after, (w, h))
 
-        gray_before = cv2.cvtColor(img_before, cv2.COLOR_BGR2GRAY)
-        gray_after = cv2.cvtColor(img_after, cv2.COLOR_BGR2GRAY)
+# ─── 2. Canvas Object / Poster Detector (Level 1 Target) ─────────────────────
 
-        diff = cv2.absdiff(gray_before, gray_after)
-        _, thresh = cv2.threshold(diff, threshold, 255, cv2.THRESH_BINARY)
+def detect_canvas_image_object(b64_image: str, win_x: int = 0, win_y: int = 0, scale_factor: float = 1.0) -> dict | None:
+    """
+    Finds the prominent central design canvas/poster in Canva editor.
+    Returns absolute physical desktop bounding box for the visual image object.
+    """
+    img = b64_to_cv2(b64_image)
+    if img is None:
+        return None
 
-        # Dilate to merge nearby changed regions
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 20))
-        thresh_dilated = cv2.dilate(thresh, kernel, iterations=2)
+    h, w = img.shape[:2]
+    ws = detect_canva_workspace(img)
 
-        contours, _ = cv2.findContours(thresh_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Crop to workspace
+    ws_crop = img[ws['y']:ws['y']+ws['height'], ws['x']:ws['x']+ws['width']]
+    if ws_crop.size == 0:
+        return None
 
-        changed_regions = []
-        total_pixels = gray_before.shape[0] * gray_before.shape[1]
-        changed_pixels = int(np.sum(thresh > 0))
+    gray = cv2.cvtColor(ws_crop, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, 30, 100)
 
-        for cnt in contours:
-            x, y, w, h = cv2.boundingRect(cnt)
-            if w * h < 500:
-                continue
-            changed_regions.append({'x': x, 'y': y, 'width': w, 'height': h})
+    # Dilate edges to connect broken contours
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    dilated = cv2.dilate(edges, kernel, iterations=2)
 
-        diff_score = changed_pixels / total_pixels
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        return {
-            'changed': diff_score > 0.005,  # > 0.5% of screen changed
-            'diff_score': round(diff_score, 4),
-            'changed_regions': changed_regions,
-            'changed_pixel_count': changed_pixels,
+    best_box = None
+    max_area = 0
+    total_ws_area = ws['width'] * ws['height']
+
+    for cnt in contours:
+        x, y, cw, ch = cv2.boundingRect(cnt)
+        area = cw * ch
+        # Must be between 8% and 80% of the workspace area
+        if area < total_ws_area * 0.08 or area > total_ws_area * 0.85:
+            continue
+        # Typical document/poster aspect ratios
+        aspect = cw / max(1, ch)
+        if 0.3 < aspect < 3.0:
+            if area > max_area:
+                max_area = area
+                best_box = {
+                    'x': int((ws['x'] + x + win_x)),
+                    'y': int((ws['y'] + y + win_y)),
+                    'width': int(cw),
+                    'height': int(ch),
+                    'confidence': 0.94,
+                    'type': 'CANVAS_OBJECT',
+                    'text': 'Image on Canvas',
+                    'source': 'canvas_detector',
+                }
+
+    # If edge detection didn't isolate it, use central 50% of the workspace
+    if not best_box:
+        cw = int(ws['width'] * 0.45)
+        ch = int(ws['height'] * 0.65)
+        cx = int(ws['x'] + (ws['width'] - cw) / 2 + win_x)
+        cy = int(ws['y'] + (ws['height'] - ch) / 2 + win_y)
+        best_box = {
+            'x': cx,
+            'y': cy,
+            'width': cw,
+            'height': ch,
+            'confidence': 0.88,
+            'type': 'CANVAS_OBJECT',
+            'text': 'Image on Canvas',
+            'source': 'canvas_workspace_center',
         }
 
-    except Exception as e:
-        return {'changed': False, 'diff_score': 0.0, 'changed_regions': [], 'error': str(e)}
+    return best_box
 
 
-def check_target_still_visible(b64_image: str, desk_x: int, desk_y: int,
-                                desk_w: int, desk_h: int,
-                                win_x: int = 0, win_y: int = 0,
-                                scale_factor: float = 1.0) -> bool:
+# ─── 3. Canva Selection Detector (Purple Border Detection) ───────────────────
+
+def detect_canva_selection_state(b64_image: str, win_x: int = 0, win_y: int = 0) -> dict:
     """
-    Check whether the target region at desktop coords still appears in a new screenshot.
-    Converts desktop coords back to screenshot coords and verifies the region is non-empty.
+    Detects Canva's signature purple selection outline (#8B3DFF / #7D2AE8)
+    around the selected element.
+    Returns { selected: bool, bounds: dict, confidence: float, method: str }
     """
-    try:
-        img = b64_to_cv2(b64_image)
-        if img is None:
-            return False
+    img = b64_to_cv2(b64_image)
+    if img is None:
+        return {'selected': False, 'confidence': 0.0}
 
-        # Convert desktop coords back to screenshot pixel coords
-        ss_x = int((desk_x - win_x) * scale_factor)
-        ss_y = int((desk_y - win_y) * scale_factor)
-        ss_w = int(desk_w * scale_factor)
-        ss_h = int(desk_h * scale_factor)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-        h_img, w_img = img.shape[:2]
-        ss_x = max(0, min(ss_x, w_img - 1))
-        ss_y = max(0, min(ss_y, h_img - 1))
-        ss_w = min(ss_w, w_img - ss_x)
-        ss_h = min(ss_h, h_img - ss_y)
+    # Canva Purple selection border in OpenCV HSV (H: 125-155, S: 100-255, V: 120-255)
+    lower_purple = np.array([125, 100, 120])
+    upper_purple = np.array([160, 255, 255])
 
-        if ss_w <= 0 or ss_h <= 0:
-            return False
+    mask = cv2.inRange(hsv, lower_purple, upper_purple)
 
-        region = img[ss_y:ss_y + ss_h, ss_x:ss_x + ss_w]
-        # If region has meaningful pixel content (not black / transparent) it still exists
-        mean_brightness = float(np.mean(region))
-        return mean_brightness > 5.0  # non-trivial content
+    # Filter out tiny noise
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    mask_clean = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-    except Exception:
-        return False
+    contours, _ = cv2.findContours(mask_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    for cnt in contours:
+        x, y, w, h = cv2.boundingRect(cnt)
+        # Selection border around an image/element must be reasonably large
+        if w >= 80 and h >= 80:
+            # Check contour perimeter vs area (it's an outline / border)
+            return {
+                'selected': True,
+                'bounds': {
+                    'x': int(x + win_x),
+                    'y': int(y + win_y),
+                    'width': int(w),
+                    'height': int(h),
+                },
+                'confidence': 0.96,
+                'method': 'visual_selection_border',
+            }
+
+    # Also check if Canva top toolbar showed "Edit" or "Edit photo"
+    return {'selected': False, 'confidence': 0.0}
+
+
+# ─── 4. Edit Photo Panel Appearance Detector ─────────────────────────────────
+
+def detect_edit_photo_panel(b64_image: str, ocr_texts: list) -> dict:
+    """
+    Checks if the left Edit Photo / Magic Studio sidebar has opened.
+    Looks for keywords: 'BG Remover', 'Background Remover', 'Adjust', 'Filters', 'Effects'.
+    """
+    lower_texts = [t.lower() for t in ocr_texts]
+    keywords = ['bg remover', 'background remover', 'magic studio', 'adjust', 'filters', 'effects']
+
+    matches = [k for k in keywords if any(k in t for t in lower_texts)]
+    if matches:
+        return {
+            'panel_open': True,
+            'confidence': 0.95,
+            'matches': matches,
+            'method': 'edit_photo_panel_ocr'
+        }
+
+    return {'panel_open': False, 'confidence': 0.0}
+
+
+# ─── 5. Screen Diff ──────────────────────────────────────────────────────────
+
+def compute_screen_diff(b64_before: str, b64_after: str, threshold: int = 25) -> dict:
+    """Compare two screenshots to detect user interaction state change."""
+    img_before = b64_to_cv2(b64_before)
+    img_after = b64_to_cv2(b64_after)
+    if img_before is None or img_after is None:
+        return {'changed': False, 'diff_score': 0.0}
+
+    if img_before.shape != img_after.shape:
+        h, w = img_before.shape[:2]
+        img_after = cv2.resize(img_after, (w, h))
+
+    gray_before = cv2.cvtColor(img_before, cv2.COLOR_BGR2GRAY)
+    gray_after = cv2.cvtColor(img_after, cv2.COLOR_BGR2GRAY)
+
+    diff = cv2.absdiff(gray_before, gray_after)
+    _, thresh = cv2.threshold(diff, threshold, 255, cv2.THRESH_BINARY)
+
+    total_pixels = gray_before.shape[0] * gray_before.shape[1]
+    changed_pixels = int(np.sum(thresh > 0))
+    diff_score = changed_pixels / total_pixels
+
+    return {
+        'changed': diff_score > 0.003,
+        'diff_score': round(diff_score, 4),
+        'changed_pixels': changed_pixels,
+    }

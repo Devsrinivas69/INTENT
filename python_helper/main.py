@@ -1,7 +1,6 @@
 """
-INTENT Python Helper — Main Process
-Newline-delimited JSON protocol over stdin/stdout.
-Handles: window detection, screen analysis, target finding, state verification.
+INTENT Python Helper — Main Process v3.3
+Provides multi-tier target detection, Canva canvas/selection detection, and state verification.
 """
 
 import sys
@@ -18,20 +17,21 @@ from uia_detector import (
     get_hwnd_accessible_elements, find_element_in_hwnd, verify_excel_state
 )
 from ocr_detector import ocr_full_image, find_best_text_match
-from opencv_detector import compute_screen_diff, detect_button_regions
+from opencv_detector import (
+    detect_canvas_image_object, detect_canva_selection_state,
+    detect_edit_photo_panel, compute_screen_diff
+)
 from screen_map_builder import (
     build_screen_map, find_candidates_in_map
 )
 
-
-# ─── Request Handler ──────────────────────────────────────────────────────────
 
 def process(cmd: dict) -> dict:
     action = cmd.get('action', '')
 
     # ── ping ──────────────────────────────────────────────────────────────────
     if action == 'ping':
-        return {'status': 'ok', 'version': '3.1.0'}
+        return {'status': 'ok', 'version': '3.3.0'}
 
     # ── get_window_info ───────────────────────────────────────────────────────
     elif action == 'get_window_info':
@@ -69,32 +69,6 @@ def process(cmd: dict) -> dict:
         time.sleep(0.6)
         return {'success': result}
 
-    # ── analyze_screen_full ───────────────────────────────────────────────────
-    elif action == 'analyze_screen_full':
-        hwnd = cmd.get('hwnd')
-        app_name = cmd.get('application', '')
-        window_title = cmd.get('window_title', '')
-        win_x = cmd.get('x', 0)
-        win_y = cmd.get('y', 0)
-        win_w = cmd.get('width', 1920)
-        win_h = cmd.get('height', 1080)
-        scale_factor = cmd.get('scale_factor', 1.0)
-        screenshot = cmd.get('screenshot')
-
-        screen_map = build_screen_map(
-            hwnd=hwnd,
-            app_name=app_name,
-            window_title=window_title,
-            win_x=win_x, win_y=win_y,
-            win_w=win_w, win_h=win_h,
-            scale_factor=scale_factor,
-            screenshot_b64=screenshot,
-        )
-
-        response = {k: v for k, v in screen_map.items()}
-        response['element_count'] = len(screen_map.get('elements', []))
-        return response
-
     # ── find_target ───────────────────────────────────────────────────────────
     elif action == 'find_target':
         hwnd = cmd.get('hwnd')
@@ -106,95 +80,147 @@ def process(cmd: dict) -> dict:
         win_h = cmd.get('height', 1080)
         scale_factor = cmd.get('scale_factor', 1.0)
         target_text = cmd.get('target_text', '')
+        target_type = cmd.get('target_type', '')
+        level_number = cmd.get('level_number', 1)
         screenshot = cmd.get('screenshot')
 
-        # 1. First priority: UI Automation for Excel
+        # ── SPECIAL CASE: LEVEL 1 CANVA (CANVAS_OBJECT: Select image) ─────────
+        if app_name == 'canva' and (level_number == 1 or target_type == 'CANVAS_OBJECT' or 'image' in target_text.lower() or 'canvas' in target_text.lower()):
+            if screenshot:
+                canvas_obj = detect_canvas_image_object(screenshot, win_x=win_x, win_y=win_y, scale_factor=scale_factor)
+                if canvas_obj:
+                    return {
+                        'found': True,
+                        'stable': True,
+                        'target': canvas_obj,
+                        'candidates': [canvas_obj],
+                        'method': 'canvas_detector',
+                    }
+
+        # ── CASE 2: EXCEL UI AUTOMATION ───────────────────────────────────────
         if app_name == 'excel' and hwnd:
             uia_match = find_element_in_hwnd(hwnd, target_text)
             if uia_match and uia_match.get('confidence', 0) >= 0.75:
-                return {
-                    'found': True,
-                    'stable': True,
-                    'target': uia_match,
-                    'candidates': [uia_match],
-                }
+                # STRICT FILTER: Reject full-screen or window bounds
+                if not (uia_match['width'] > win_w * 0.75 and uia_match['height'] > win_h * 0.75):
+                    return {
+                        'found': True,
+                        'stable': True,
+                        'target': uia_match,
+                        'candidates': [uia_match],
+                        'method': 'uia',
+                    }
 
-        # 2. Second priority: Build ScreenMap using Windows Native OCR
-        screen_map = build_screen_map(
-            hwnd=hwnd,
-            app_name=app_name,
-            window_title=window_title,
-            win_x=win_x, win_y=win_y,
-            win_w=win_w, win_h=win_h,
-            scale_factor=scale_factor,
-            screenshot_b64=screenshot,
-        )
+        # ── CASE 3: WINDOWS NATIVE OCR FOR BUTTONS (Edit photo, BG Remover, Animate) ──
+        if screenshot:
+            screen_map = build_screen_map(
+                hwnd=hwnd,
+                app_name=app_name,
+                window_title=window_title,
+                win_x=win_x, win_y=win_y,
+                win_w=win_w, win_h=win_h,
+                scale_factor=scale_factor,
+                screenshot_b64=screenshot,
+            )
 
-        candidates = find_candidates_in_map(screen_map, target_text, min_similarity=0.45)
+            candidates = find_candidates_in_map(screen_map, target_text, min_similarity=0.45)
 
-        if candidates:
-            best = candidates[0]
-            if best.get('score', 0) >= 0.60:
-                return {
-                    'found': True,
-                    'stable': True,
-                    'target': {
-                        'text': best['text'],
-                        'type': best.get('type', 'button'),
-                        'x': best['x'],
-                        'y': best['y'],
-                        'width': best['width'],
-                        'height': best['height'],
-                        'confidence': best.get('score', best.get('confidence', 0.85)),
-                        'source': best.get('source', 'ocr'),
-                    },
-                    'candidates': candidates[:5],
-                    'element_count': len(screen_map.get('elements', [])),
-                }
+            # Filter out giant container candidates
+            valid_candidates = [
+                c for c in candidates
+                if not (c.get('width', 0) > win_w * 0.70 and c.get('height', 0) > win_h * 0.70)
+                and not (c.get('x', 0) == 0 and c.get('y', 0) == 0 and c.get('width', 0) == win_w)
+            ]
+
+            if valid_candidates:
+                best = valid_candidates[0]
+                if best.get('score', 0) >= 0.55:
+                    return {
+                        'found': True,
+                        'stable': True,
+                        'target': {
+                            'text': best['text'],
+                            'type': 'BUTTON',
+                            'x': best['x'],
+                            'y': best['y'],
+                            'width': best['width'],
+                            'height': best['height'],
+                            'confidence': best.get('score', 0.88),
+                            'source': best.get('source', 'ocr'),
+                        },
+                        'candidates': valid_candidates[:5],
+                        'method': 'winrt_ocr',
+                    }
 
         return {
             'found': False,
             'stable': False,
-            'reason': f'No local text match for "{target_text}" in {len(screen_map.get("elements", []))} detected elements',
-            'candidates': candidates[:5],
-            'element_count': len(screen_map.get('elements', [])),
+            'reason': f'No target control matched for "{target_text}"',
+            'candidates': [],
         }
 
     # ── verify_level ─────────────────────────────────────────────────────────
     elif action == 'verify_level':
         hwnd = cmd.get('hwnd')
         app_name = cmd.get('application', '')
+        level_number = cmd.get('level_number', 1)
         condition = cmd.get('condition', '')
         screenshot_before_b64 = cmd.get('screenshot_before')
         screenshot_after_b64 = cmd.get('screenshot_after')
 
-        # Excel UIA check
+        # ── LEVEL 1 CANVA VERIFICATION: PURPLE SELECTION BORDER DETECTED ──────
+        if app_name == 'canva' and level_number == 1:
+            if screenshot_after_b64:
+                sel = detect_canva_selection_state(screenshot_after_b64)
+                if sel.get('selected'):
+                    return {
+                        'completed': True,
+                        'confidence': 0.96,
+                        'evidence': 'Canva purple selection outline detected around target image',
+                        'method': 'visual_selection_border',
+                        'bounds': sel.get('bounds'),
+                    }
+
+        # ── LEVEL 2 CANVA VERIFICATION: EDIT PHOTO PANEL DETECTED ─────────────
+        if app_name == 'canva' and level_number == 2:
+            if screenshot_after_b64:
+                # Run quick OCR on the screen
+                ocr_items = ocr_full_image(screenshot_after_b64)
+                texts = [item['text'] for item in ocr_items]
+                panel = detect_edit_photo_panel(screenshot_after_b64, texts)
+                if panel.get('panel_open'):
+                    return {
+                        'completed': True,
+                        'confidence': 0.95,
+                        'evidence': f'Edit photo tools panel opened ({", ".join(panel.get("matches", []))})',
+                        'method': 'edit_photo_panel_ocr',
+                    }
+
+        # ── EXCEL UIA VERIFICATION ────────────────────────────────────────────
         if app_name == 'excel' and hwnd:
             uia_result = verify_excel_state(hwnd, condition)
             if uia_result.get('completed') and uia_result.get('confidence', 0) >= 0.75:
                 return {**uia_result, 'method': 'uia'}
 
-        # Screen diff check
+        # ── GENERAL SCREEN DIFF FALLBACK ──────────────────────────────────────
         if screenshot_before_b64 and screenshot_after_b64:
             diff = compute_screen_diff(screenshot_before_b64, screenshot_after_b64)
             if diff.get('changed'):
                 return {
                     'completed': True,
-                    'confidence': min(0.88, 0.55 + diff['diff_score'] * 10),
-                    'evidence': f'Screen state change observed (diff={diff["diff_score"]:.3f})',
+                    'confidence': min(0.85, 0.50 + diff['diff_score'] * 10),
+                    'evidence': f'Screen state change detected (diff={diff["diff_score"]:.3f})',
                     'method': 'screen_diff',
                 }
 
-        return {'completed': False, 'confidence': 0.3, 'evidence': 'Checking state'}
+        return {'completed': False, 'confidence': 0.3, 'evidence': 'Waiting for user action'}
 
     return {'error': f'Unknown action: {action}'}
 
 
-# ─── Main Loop ────────────────────────────────────────────────────────────────
-
 def main():
     sys.stdout.reconfigure(line_buffering=True)
-    print(json.dumps({'status': 'ready', 'version': '3.1.0'}))
+    print(json.dumps({'status': 'ready', 'version': '3.3.0'}))
 
     for line in sys.stdin:
         line = line.strip()
