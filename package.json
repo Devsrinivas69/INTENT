@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "diagnose": "python scripts/diagnose.py",
     "test:guidance": "python scripts/test_guidance.py",
-    "audit:intent": "python scripts/audit_intent.py"
+    "audit:intent": "python scripts/audit_intent.py",
+    "intent:self-test": "python -X utf8 scripts/self_test.py"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

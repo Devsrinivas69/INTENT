@@ -1,6 +1,6 @@
 """
-INTENT Python Helper — Main Process v4.1
-Deterministic multi-tier target detection & state transition verification.
+INTENT Python Helper — Main Process v4.3
+Deterministic multi-tier target detection & state transition verification for Canva and Microsoft Excel.
 """
 
 import sys
@@ -32,7 +32,7 @@ def process(cmd: dict) -> dict:
 
     # ── ping ──────────────────────────────────────────────────────────────────
     if action == 'ping':
-        return {'status': 'ok', 'version': '4.1.0'}
+        return {'status': 'ok', 'version': '4.3.0'}
 
     # ── get_window_info ───────────────────────────────────────────────────────
     elif action == 'get_window_info':
@@ -85,7 +85,19 @@ def process(cmd: dict) -> dict:
         level_number = cmd.get('level_number', 1)
         screenshot = cmd.get('screenshot')
 
-        # ── TIER 0 / 1: LEVEL 1 CANVA (CANVAS_OBJECT: Select image) ───────────
+        # ── EXCEL: TIER 1 DIRECT UIA ACCESSIBILITY TREE ───────────────────────
+        if app_name == 'excel' and hwnd:
+            uia_match = find_element_in_hwnd(hwnd, target_text)
+            if uia_match and uia_match.get('confidence', 0) >= 0.60:
+                return {
+                    'found': True,
+                    'stable': True,
+                    'target': uia_match,
+                    'candidates': [uia_match],
+                    'method': 'uia',
+                }
+
+        # ── CANVA: TIER 0 / 1 CANVAS IMAGE OBJECT (Level 1) ───────────────────
         if app_name == 'canva' and (level_number == 1 or target_type == 'CANVAS_OBJECT' or 'image' in target_text.lower() or 'canvas' in target_text.lower()):
             if screenshot:
                 canvas_obj = detect_canvas_image_object(screenshot, win_x=win_x, win_y=win_y, scale_factor=scale_factor)
@@ -98,22 +110,8 @@ def process(cmd: dict) -> dict:
                         'method': 'opencv_canvas',
                     }
 
-        # ── TIER 1: EXCEL UI AUTOMATION ───────────────────────────────────────
-        if app_name == 'excel' and hwnd:
-            uia_match = find_element_in_hwnd(hwnd, target_text)
-            if uia_match and uia_match.get('confidence', 0) >= 0.70:
-                # STRICT FILTER: Reject full-screen or window bounds
-                if not (uia_match['width'] > win_w * 0.70 and uia_match['height'] > win_h * 0.70):
-                    return {
-                        'found': True,
-                        'stable': True,
-                        'target': uia_match,
-                        'candidates': [uia_match],
-                        'method': 'uia',
-                    }
-
-        # ── TIER 3: WINDOWS NATIVE OCR FOR BUTTONS & CONTROLS ─────────────────
-        if screenshot:
+        # ── TIER 3: HYBRID SCREEN MAP (UIA + WINRT OCR + SCREENSHOT) ──────────
+        if screenshot or hwnd:
             screen_map = build_screen_map(
                 hwnd=hwnd,
                 app_name=app_name,
@@ -124,15 +122,8 @@ def process(cmd: dict) -> dict:
                 screenshot_b64=screenshot,
             )
 
-            # Minimum similarity 0.50 with robust text_similarity
-            candidates = find_candidates_in_map(screen_map, target_text, min_similarity=0.50)
+            candidates = find_candidates_in_map(screen_map, target_text, min_similarity=0.45)
 
-            # Strict filtering:
-            # 1. Reject full containers
-            # 2. Reject root window
-            # 3. Reject anything in Chrome tabs / URL bar area (y < win_y + 70)
-            # 4. Reject anything outside window
-            # 5. Reject single/two-character false matches
             valid_candidates = []
             for c in candidates:
                 w = c.get('width', 0)
@@ -143,27 +134,24 @@ def process(cmd: dict) -> dict:
 
                 if len(txt) < 2:
                     continue
-                if w > win_w * 0.70 and h > win_h * 0.70:
+                if w > win_w * 0.85 and h > win_h * 0.85:
                     continue
-                if x == 0 and y == 0 and w >= win_w * 0.90:
-                    continue
-                # Reject Chrome browser tabs/navigation bar
-                if y < win_y + 70:
-                    continue
-                if y > win_y + win_h:
+
+                # In Canva: reject Chrome tabs/navigation bar (y < win_y + 65)
+                if app_name == 'canva' and y < win_y + 65:
                     continue
 
                 valid_candidates.append(c)
 
             if valid_candidates:
                 best = valid_candidates[0]
-                if best.get('score', 0) >= 0.50:
+                if best.get('score', 0) >= 0.45:
                     return {
                         'found': True,
                         'stable': True,
                         'target': {
                             'text': best['text'],
-                            'type': 'BUTTON',
+                            'type': best.get('type', 'BUTTON'),
                             'x': best['x'],
                             'y': best['y'],
                             'width': best['width'],
@@ -172,13 +160,13 @@ def process(cmd: dict) -> dict:
                             'source': best.get('source', 'winrt_ocr'),
                         },
                         'candidates': valid_candidates[:5],
-                        'method': 'winrt_ocr',
+                        'method': best.get('source', 'winrt_ocr'),
                     }
 
         return {
             'found': False,
             'stable': False,
-            'reason': f'No target control matched for "{target_text}" within application bounds',
+            'reason': f'No target control matched for "{target_text}" within {app_name.upper()} bounds',
             'candidates': [],
         }
 
@@ -193,6 +181,12 @@ def process(cmd: dict) -> dict:
         target_bounds = cmd.get('target_bounds')
         screenshot_before_b64 = cmd.get('screenshot_before')
         screenshot_after_b64 = cmd.get('screenshot_after')
+
+        # ── EXCEL UIA & STATE VERIFICATION ────────────────────────────────────
+        if app_name == 'excel' and hwnd:
+            uia_result = verify_excel_state(hwnd, condition)
+            if uia_result.get('completed') and uia_result.get('confidence', 0) >= 0.70:
+                return {**uia_result, 'method': 'uia'}
 
         # ── LEVEL 1 CANVA: PURPLE SELECTION OUTLINE MATCHING TARGET ───────────
         if app_name == 'canva' and level_number == 1:
@@ -211,25 +205,13 @@ def process(cmd: dict) -> dict:
         if app_name == 'canva' and level_number == 2:
             if screenshot_after_b64:
                 ocr_items = ocr_full_image(screenshot_after_b64, win_x=win_x, win_y=win_y)
-
-                # Check Edit photo left sidebar panel
                 edit_panel = detect_edit_photo_panel(screenshot_after_b64, ocr_items, win_x=win_x, win_y=win_y)
                 if edit_panel.get('panel_open'):
                     return {
                         'completed': True,
                         'confidence': 0.95,
-                        'evidence': f'Edit photo tools panel confirmed open in left sidebar ({", ".join(edit_panel.get("matches", []))})',
+                        'evidence': f'Edit photo tools panel confirmed open ({", ".join(edit_panel.get("matches", []))})',
                         'method': 'edit_photo_panel_ocr',
-                    }
-
-                # Check Animation left sidebar panel
-                anim_panel = detect_animation_panel(ocr_items, win_x=win_x, win_y=win_y)
-                if anim_panel.get('panel_open'):
-                    return {
-                        'completed': True,
-                        'confidence': 0.95,
-                        'evidence': f'Animation styles panel confirmed open in left sidebar ({", ".join(anim_panel.get("matches", []))})',
-                        'method': 'animation_panel_ocr',
                     }
 
         # ── LEVEL 3 CANVA: BACKGROUND REMOVAL ACTION CONFIRMATION ─────────────
@@ -260,12 +242,6 @@ def process(cmd: dict) -> dict:
                         'method': canvas_result['method'],
                     }
 
-        # ── EXCEL UIA VERIFICATION ────────────────────────────────────────────
-        if app_name == 'excel' and hwnd:
-            uia_result = verify_excel_state(hwnd, condition)
-            if uia_result.get('completed') and uia_result.get('confidence', 0) >= 0.70:
-                return {**uia_result, 'method': 'uia'}
-
         # ── SCREEN DIFF FALLBACK (High threshold to avoid noise) ──────────────
         if screenshot_before_b64 and screenshot_after_b64:
             diff = compute_screen_diff(screenshot_before_b64, screenshot_after_b64)
@@ -284,7 +260,7 @@ def process(cmd: dict) -> dict:
 
 def main():
     sys.stdout.reconfigure(line_buffering=True)
-    print(json.dumps({'status': 'ready', 'version': '4.1.0'}))
+    print(json.dumps({'status': 'ready', 'version': '4.3.0'}))
 
     for line in sys.stdin:
         line = line.strip()

@@ -1,12 +1,12 @@
 """
-Screen Map Builder
-Orchestrates UIA + Windows Native OCR + OpenCV to build a structured ScreenMap.
+Screen Map Builder v4.3
+Orchestrates Windows UI Automation + Windows Native OCR + OpenCV to build a structured ScreenMap.
 All coordinates are ABSOLUTE WINDOWS DESKTOP COORDINATES.
 """
 
 import time
-from uia_detector import get_hwnd_accessible_elements
-from ocr_detector import ocr_full_image, text_similarity
+from uia_detector import get_hwnd_accessible_elements, EXCEL_SEMANTIC_ALIASES
+from ocr_detector import ocr_full_image, text_similarity, normalize_text
 
 
 def iou(a: dict, b: dict) -> float:
@@ -29,7 +29,7 @@ def deduplicate_elements(elements: list, iou_threshold: float = 0.4) -> list:
     Merge overlapping detections. When two elements overlap significantly,
     keep the one with the higher confidence (UIA > OCR > OpenCV).
     """
-    source_priority = {'uia': 3, 'ocr': 2, 'winrt_ocr': 2, 'opencv': 1}
+    source_priority = {'uia': 3, 'uia_worksheet_grid': 3, 'ocr': 2, 'winrt_ocr': 2, 'opencv': 1}
     sorted_els = sorted(
         elements,
         key=lambda e: (source_priority.get(e.get('source', 'ocr'), 1), e.get('confidence', 0)),
@@ -90,7 +90,7 @@ def build_screen_map(hwnd: int, app_name: str, window_title: str,
     # 1. Windows UI Automation
     if hwnd:
         try:
-            uia_els = get_hwnd_accessible_elements(hwnd, max_depth=8)
+            uia_els = get_hwnd_accessible_elements(hwnd, max_depth=10)
             all_elements.extend(uia_els)
         except Exception:
             pass
@@ -122,6 +122,7 @@ def build_screen_map(hwnd: int, app_name: str, window_title: str,
             'id': f'el_{i:03d}',
             'text': text,
             'type': el_type,
+            'control_type': ctrl_type,
             'x': el.get('x', 0),
             'y': el.get('y', 0),
             'width': el.get('width', 0),
@@ -143,19 +144,33 @@ def build_screen_map(hwnd: int, app_name: str, window_title: str,
 
 def find_candidates_in_map(screen_map: dict, target_text: str, min_similarity: float = 0.50) -> list:
     """
-    Search a ScreenMap for elements matching target_text.
+    Search a ScreenMap for elements matching target_text with semantic aliases.
     """
+    target_norm = normalize_text(target_text)
+    aliases = [target_norm]
+    for canon, alias_list in EXCEL_SEMANTIC_ALIASES.items():
+        if target_norm == canon or any(a in target_norm for a in alias_list):
+            aliases.extend([normalize_text(a) for a in alias_list])
+
     candidates = []
     for el in screen_map.get('elements', []):
         w = el.get('width', 0)
         h = el.get('height', 0)
+        el_text = normalize_text(el.get('text', ''))
+
         # Skip giant containers / whole windows
-        if w > 700 and h > 450:
+        if w > 800 and h > 500:
             continue
-        sim = text_similarity(el.get('text', ''), target_text)
-        if sim >= min_similarity:
-            candidate = {**el, 'similarity': sim}
-            candidate['score'] = round(el.get('confidence', 0.7) * sim, 3)
+
+        best_sim = 0.0
+        for alias in aliases:
+            sim = text_similarity(el_text, alias)
+            if sim > best_sim:
+                best_sim = sim
+
+        if best_sim >= min_similarity:
+            candidate = {**el, 'similarity': best_sim}
+            candidate['score'] = round(el.get('confidence', 0.7) * best_sim, 3)
             candidates.append(candidate)
 
     candidates.sort(key=lambda c: c['score'], reverse=True)
