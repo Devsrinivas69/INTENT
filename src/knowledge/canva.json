@@ -1,0 +1,147 @@
+{
+  "_comment": "Canva UI Knowledge Registry — ZERO COORDINATES. Semantics only.",
+  "_version": "1.0",
+  "application": "canva",
+  "detection_hints": {
+    "window_title_patterns": ["canva", "Canva"],
+    "process_names": ["chrome.exe", "msedge.exe", "brave.exe"],
+    "window_classes": ["Chrome_WidgetWin_1", "MicrosoftEdgeWin32", "Chrome_WidgetWin_0"]
+  },
+  "layout_regions": {
+    "top_nav_bar": {
+      "description": "Top navigation bar — File, Resize, Title, Share, Export",
+      "relative_y": "0% to 9%"
+    },
+    "top_contextual_toolbar": {
+      "description": "Floating contextual toolbar appearing when an element is selected: Edit photo, Edit, Animate, Position, Transparency, Lock, Duplicate",
+      "relative_y": "9% to 17%",
+      "appears_when": "element_selected"
+    },
+    "left_nav_sidebar": {
+      "description": "Left navigation icon rail — Design, Elements, Text, Brand, Uploads, Draw, Projects, Apps",
+      "relative_x": "0% to 6%"
+    },
+    "left_tools_panel": {
+      "description": "Left expanded tools / effects panel that opens when a tool is activated",
+      "relative_x": "6% to 32%",
+      "appears_when": "tool_activated"
+    },
+    "central_workspace": {
+      "description": "The scrollable canvas workspace containing the active design document",
+      "relative_x": "6% to 71%",
+      "relative_y": "16% to 94%"
+    },
+    "right_panel": {
+      "description": "Right side properties / comments / design panel",
+      "relative_x": "71% to 100%"
+    }
+  },
+  "controls": [
+    {
+      "canonical": "canvas_image",
+      "description": "The central image, photo, or graphic element placed on the design canvas",
+      "target_type": "CANVAS_OBJECT",
+      "aliases": [
+        "image on canvas",
+        "photo",
+        "picture",
+        "canvas object",
+        "design element",
+        "poster image",
+        "design image"
+      ],
+      "detection_methods": ["opencv_canvas_contour", "visual_center"],
+      "selection_indicator": {
+        "type": "visual_border",
+        "color_hex": "#8B3DFF",
+        "hsv_lower": [120, 90, 100],
+        "hsv_upper": [160, 255, 255],
+        "description": "Bright purple/violet selection outline drawn by Canva around selected elements"
+      },
+      "completion_proof": "purple_selection_border_present"
+    },
+    {
+      "canonical": "edit_photo",
+      "description": "The Edit photo or Edit image button in the top contextual toolbar when an image is selected",
+      "target_type": "BUTTON",
+      "aliases": [
+        "Edit photo",
+        "Edit image",
+        "Edit",
+        "Edit Image",
+        "photo editor",
+        "edit"
+      ],
+      "aria_labels": ["Edit photo", "Edit image", "Edit"],
+      "roles": ["button", "menuitem"],
+      "region": "top_contextual_toolbar",
+      "completion_proof": "edit_photo_panel_visible",
+      "completion_indicators": {
+        "panel_keywords": ["bg remover", "background remover", "magic studio", "adjust", "filters", "effects", "magic eraser"]
+      }
+    },
+    {
+      "canonical": "animate",
+      "description": "The Animate button in the top contextual toolbar when an element is selected",
+      "target_type": "BUTTON",
+      "aliases": [
+        "Animate",
+        "Add animation",
+        "Animation",
+        "animate"
+      ],
+      "aria_labels": ["Animate"],
+      "roles": ["button"],
+      "region": "top_contextual_toolbar",
+      "completion_proof": "animation_panel_visible",
+      "completion_indicators": {
+        "panel_keywords": ["fade", "pan", "rise", "pop", "wipe", "breathe", "page animations", "photo animations", "element animations", "no animation"]
+      }
+    },
+    {
+      "canonical": "bg_remover",
+      "description": "The Background Remover or BG Remover tool button inside the Edit photo / Magic Studio sidebar",
+      "target_type": "BUTTON",
+      "aliases": [
+        "BG Remover",
+        "Background Remover",
+        "Remove Background",
+        "Remove background",
+        "bg remover",
+        "background removal"
+      ],
+      "aria_labels": ["Background Remover", "BG Remover", "Remove background"],
+      "roles": ["button", "menuitem"],
+      "region": "left_tools_panel",
+      "completion_proof": "background_removal_applied",
+      "completion_indicators": {
+        "visual_change": "canvas_pixel_diff_gt_5pct",
+        "panel_keywords": ["removing background", "done", "background removed"]
+      }
+    },
+    {
+      "canonical": "animation_fade",
+      "description": "The Fade animation preset in the Animate panel",
+      "target_type": "BUTTON",
+      "aliases": ["Fade", "fade"],
+      "region": "left_tools_panel",
+      "completion_proof": "visual_state_change"
+    },
+    {
+      "canonical": "animation_pan",
+      "description": "The Pan animation preset in the Animate panel",
+      "target_type": "BUTTON",
+      "aliases": ["Pan", "pan"],
+      "region": "left_tools_panel",
+      "completion_proof": "visual_state_change"
+    },
+    {
+      "canonical": "animation_rise",
+      "description": "The Rise animation preset in the Animate panel",
+      "target_type": "BUTTON",
+      "aliases": ["Rise", "rise"],
+      "region": "left_tools_panel",
+      "completion_proof": "visual_state_change"
+    }
+  ]
+}

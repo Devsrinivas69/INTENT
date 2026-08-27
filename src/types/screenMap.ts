@@ -87,10 +87,16 @@ export interface TargetLock {
   cursorAnchor: { x: number; y: number } // Cursor anchor in Overlay CSS Space
   center: { x: number; y: number }       // Physical Center
   confidence: number
-  method: string                 // 'opencv_canvas' | 'winrt_ocr' | 'uia' | 'gemini_disambig'
+  method: string                 // 'opencv_canvas' | 'winrt_ocr' | 'uia' | 'dom_bridge' | 'gemini_disambig'
   isStable: boolean
   candidates: TargetCandidate[]
   timestamp: number
+  // Stale-target protection fields
+  windowBounds: DesktopBounds    // Window bounds at time of locking (for staleness check)
+  windowHwnd: number             // HWND at time of locking
+  screenWidth: number            // Screen dimensions at lock time
+  screenHeight: number           // Screen dimensions at lock time
+  expiresAt: number              // Unix ms when this lock becomes stale (default: 30s)
 }
 
 export interface TargetNotFound {
@@ -134,7 +140,26 @@ export interface BaselineState {
   timestamp: number
 }
 
-// ─── Overlay Payload (Transferred to overlayWin) ─────────────────────────────
+// ─── Multi-Monitor Display Info ───────────────────────────────────────────────────────────
+
+export interface DisplayRect {
+  id: number
+  x: number
+  y: number
+  width: number
+  height: number
+  scaleFactor: number
+  isPrimary: boolean
+}
+
+export interface DisplayInfo {
+  screenWidth: number
+  screenHeight: number
+  scaleFactor: number
+  displays?: DisplayRect[]
+}
+
+// ─── Overlay Payload (Transferred to overlayWin) ──────────────────────────────────────────────────────
 
 export interface OverlayPayload {
   visible: boolean

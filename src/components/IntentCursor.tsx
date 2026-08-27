@@ -7,7 +7,7 @@ interface Props {
   targetText?: string
   levelNumber: number
   totalLevels: number
-  status: 'SCANNING' | 'GUIDING' | 'WAITING' | 'VERIFYING' | 'COMPLETE' | 'NOT_FOUND'
+  status: 'SCANNING' | 'GUIDING' | 'WAITING' | 'ACTION_DETECTED' | 'VERIFYING' | 'COMPLETE' | 'NOT_FOUND'
   method?: string
   confidence?: number
 }
@@ -157,9 +157,11 @@ export function IntentCursor({
             style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.85)' }}
           >
             {status === 'WAITING' && 'WAITING FOR YOU'}
+            {status === 'ACTION_DETECTED' && '● ACTION DETECTED'}
             {status === 'VERIFYING' && 'VERIFYING...'}
             {status === 'GUIDING' && `LEVEL ${levelNumber}/${totalLevels}`}
             {status === 'COMPLETE' && '✓ VERIFIED'}
+            {status === 'NOT_FOUND' && 'NOT FOUND — RESCANNING'}
           </div>
         </div>
       </motion.div>
@@ -170,7 +172,7 @@ export function IntentCursor({
         style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.8)' }}
       >
         <div className="flex items-center justify-between text-white font-semibold border-b border-white/10 pb-1">
-          <span>INTENT ENGINE v3.2</span>
+          <span>INTENT ENGINE v4.0</span>
           <span className="text-white/50">{status}</span>
         </div>
         <div>METHOD: <span className="text-white font-semibold uppercase">{method}</span></div>

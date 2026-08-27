@@ -6,6 +6,7 @@ import { spawn, ChildProcess } from 'child_process'
 import readline from 'readline'
 import dotenv from 'dotenv'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { WebSocketServer, WebSocket } from 'ws'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -102,6 +103,56 @@ function sendPythonCommand(cmd: Record<string, any>): Promise<any> {
 let floatingWin: BrowserWindow | null = null
 let panelWin: BrowserWindow | null = null
 let overlayWin: BrowserWindow | null = null
+
+// ─── Browser Extension DOM Bridge ─────────────────────────────────────────────
+// WebSocket server on port 18923 receives DOM element snapshots from the
+// Canva browser extension (browser_extension/content.js).
+// INTENT uses these as a high-confidence source (Tier 2) for Canva element positions.
+
+const DOM_BRIDGE_PORT = 18923
+let domBridgeWss: WebSocketServer | null = null
+let lastDomSnapshot: Record<string, any> | null = null
+let domBridgeConnected = false
+
+function initDomBridgeServer() {
+  try {
+    domBridgeWss = new WebSocketServer({ port: DOM_BRIDGE_PORT, host: '127.0.0.1' })
+
+    domBridgeWss.on('connection', (ws: WebSocket) => {
+      domBridgeConnected = true
+      console.log('[INTENT] Browser extension DOM bridge connected')
+
+      ws.on('message', (raw: Buffer) => {
+        try {
+          const snapshot = JSON.parse(raw.toString())
+          if (snapshot.type === 'canva_dom_snapshot') {
+            lastDomSnapshot = snapshot
+            // Forward to panel renderer
+            panelWin?.webContents.send('dom-bridge:snapshot', snapshot)
+          }
+        } catch (e) {
+          // ignore malformed messages
+        }
+      })
+
+      ws.on('close', () => {
+        domBridgeConnected = false
+        console.log('[INTENT] Browser extension DOM bridge disconnected')
+      })
+
+      // Send immediate snapshot request
+      ws.send(JSON.stringify({ type: 'request_snapshot' }))
+    })
+
+    domBridgeWss.on('error', (err: Error) => {
+      console.warn('[INTENT] DOM bridge WebSocket error:', err.message)
+    })
+
+    console.log(`[INTENT] DOM bridge WebSocket server listening on port ${DOM_BRIDGE_PORT}`)
+  } catch (err) {
+    console.warn('[INTENT] Could not start DOM bridge server:', err)
+  }
+}
 
 // ─── URL Helpers ─────────────────────────────────────────────────────────────
 
@@ -202,6 +253,7 @@ function createOverlayWindow() {
 
 app.whenReady().then(async () => {
   initPythonHelper()
+  initDomBridgeServer()
 
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
     if (permission === 'media' || permission === 'display-capture') {
@@ -218,6 +270,7 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (pythonProc) pythonProc.kill()
+  if (domBridgeWss) domBridgeWss.close()
   app.quit()
 })
 
@@ -257,12 +310,50 @@ ipcMain.handle('window:hide-overlay', () => {
 // ─── IPC: Screen Capture & Display Info ──────────────────────────────────────
 
 ipcMain.handle('screen:get-display-info', () => {
-  const display = screen.getPrimaryDisplay()
+  const primary = screen.getPrimaryDisplay()
+  const all = screen.getAllDisplays()
   return {
-    screenWidth: display.bounds.width,
-    screenHeight: display.bounds.height,
-    scaleFactor: display.scaleFactor,
+    // Primary display
+    screenWidth: primary.bounds.width,
+    screenHeight: primary.bounds.height,
+    scaleFactor: primary.scaleFactor,
+    // Full multi-monitor topology
+    displays: all.map(d => ({
+      id: d.id,
+      x: d.bounds.x,
+      y: d.bounds.y,
+      width: d.bounds.width,
+      height: d.bounds.height,
+      scaleFactor: d.scaleFactor,
+      isPrimary: d.id === primary.id,
+    }))
   }
+})
+
+// ─── IPC: DOM Bridge ──────────────────────────────────────────────────────────
+
+ipcMain.handle('dom-bridge:get-elements', () => {
+  return {
+    connected: domBridgeConnected,
+    snapshot: lastDomSnapshot,
+    timestamp: lastDomSnapshot?.timestamp ?? null,
+  }
+})
+
+ipcMain.handle('dom-bridge:request-snapshot', () => {
+  if (!domBridgeWss) return { sent: false }
+  let sent = false
+  domBridgeWss.clients.forEach((ws: WebSocket) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'request_snapshot' }))
+      sent = true
+    }
+  })
+  return { sent }
+})
+
+ipcMain.handle('dom-bridge:status', () => {
+  return { connected: domBridgeConnected }
 })
 
 ipcMain.handle('screen:capture', async () => {
@@ -548,5 +639,6 @@ ipcMain.handle('app:api-status', () => {
   return {
     hasKey: !!process.env.GEMINI_API_KEY,
     isDev,
+    domBridgeConnected,
   }
 })

@@ -1,0 +1,135 @@
+{
+  "_comment": "Excel UI Knowledge Registry — ZERO COORDINATES. Semantics only.",
+  "_version": "1.0",
+  "application": "excel",
+  "detection_hints": {
+    "window_class": "XLMAIN",
+    "process_name": "EXCEL.EXE",
+    "window_title_patterns": ["Microsoft Excel", "Excel", ".xlsx", ".xls", ".xlsm"]
+  },
+  "layout_regions": {
+    "title_bar": {
+      "description": "Title bar and Quick Access Toolbar",
+      "relative_y": "0% to 4%"
+    },
+    "ribbon_tabs": {
+      "description": "Ribbon tab buttons: File, Home, Insert, Page Layout, Formulas, Data, Review, View",
+      "relative_y": "4% to 8%"
+    },
+    "ribbon_tools": {
+      "description": "Ribbon tool groups visible under active tab",
+      "relative_y": "8% to 16%"
+    },
+    "formula_bar": {
+      "description": "Name box and formula input bar",
+      "relative_y": "16% to 19%"
+    },
+    "spreadsheet_grid": {
+      "description": "The main spreadsheet grid area with cells, rows, and columns",
+      "relative_y": "19% to 96%",
+      "relative_x": "0% to 100%"
+    },
+    "status_bar": {
+      "description": "Bottom status bar showing cell count, sum, average",
+      "relative_y": "96% to 100%"
+    }
+  },
+  "controls": [
+    {
+      "canonical": "data_cells",
+      "description": "The spreadsheet grid area where data is entered in cells (rows × columns)",
+      "target_type": "CANVAS_OBJECT",
+      "aliases": [
+        "data cells",
+        "data range",
+        "cells",
+        "spreadsheet",
+        "grid",
+        "table",
+        "data table"
+      ],
+      "control_types": ["DataGrid", "DataItem"],
+      "region": "spreadsheet_grid",
+      "completion_proof": "cell_range_selected",
+      "completion_indicators": {
+        "uia_state": "selection_present",
+        "visual": "selection_highlight_on_cells"
+      }
+    },
+    {
+      "canonical": "insert_tab",
+      "description": "The Insert ribbon tab button",
+      "target_type": "TAB",
+      "aliases": [
+        "Insert",
+        "insert",
+        "Insert tab",
+        "insert ribbon"
+      ],
+      "aria_labels": ["Insert Tab", "Insert"],
+      "control_types": ["TabItemControl"],
+      "roles": ["tab"],
+      "region": "ribbon_tabs",
+      "completion_proof": "insert_tab_active",
+      "completion_indicators": {
+        "uia_state": "TabItem is selected/active",
+        "ribbon_content": ["Tables", "Illustrations", "Charts", "Recommended Charts"]
+      }
+    },
+    {
+      "canonical": "recommended_charts",
+      "description": "Recommended Charts button in the Insert ribbon Charts group",
+      "target_type": "BUTTON",
+      "aliases": [
+        "Recommended Charts",
+        "recommended charts",
+        "Charts",
+        "Insert Chart",
+        "chart wizard"
+      ],
+      "aria_labels": ["Recommended Charts", "See All Charts"],
+      "control_types": ["ButtonControl"],
+      "roles": ["button"],
+      "region": "ribbon_tools",
+      "completion_proof": "chart_object_present",
+      "completion_indicators": {
+        "dialog": "Insert Chart dialog opens",
+        "uia_element": "ChartObject or ImageControl in grid"
+      }
+    },
+    {
+      "canonical": "column_chart",
+      "description": "Column chart button in the Insert ribbon Charts group",
+      "target_type": "BUTTON",
+      "aliases": [
+        "Column",
+        "Insert Column or Bar Chart",
+        "Bar Chart",
+        "column chart",
+        "bar chart"
+      ],
+      "control_types": ["ButtonControl"],
+      "region": "ribbon_tools",
+      "completion_proof": "chart_object_present"
+    },
+    {
+      "canonical": "chart_object",
+      "description": "A chart element inserted on the Excel worksheet",
+      "target_type": "CANVAS_OBJECT",
+      "aliases": [
+        "Chart on Worksheet",
+        "chart",
+        "graph",
+        "Chart Area",
+        "chart object"
+      ],
+      "control_types": ["ImageControl", "ChartObject"],
+      "region": "spreadsheet_grid",
+      "completion_proof": "chart_visible",
+      "completion_indicators": {
+        "uia_name_contains": ["Chart", "chart"],
+        "uia_control_type": ["ImageControl"]
+      }
+    }
+  ]
+}

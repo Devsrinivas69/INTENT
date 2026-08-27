@@ -11,6 +11,8 @@
     "build": "vite build",
     "package": "npm run build && electron-builder --win",
     "preview": "vite preview",
+    "diagnose": "python scripts/diagnose.py",
+    "test:guidance": "python scripts/test_guidance.py",
     "audit:intent": "python scripts/audit_intent.py"
   },
   "dependencies": {
@@ -19,12 +21,14 @@
     "framer-motion": "^11.3.30",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "ws": "^8.21.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "electron": "31.7.7",

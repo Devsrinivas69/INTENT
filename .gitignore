@@ -40,3 +40,6 @@ __pycache__/
 *$py.class
 venv/
 .venv/
+
+# Vite temp files
+vite.config.ts.timestamp-*.mjs

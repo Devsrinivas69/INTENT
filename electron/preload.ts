@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   captureScreen: (): Promise<string | null> =>
     ipcRenderer.invoke('screen:capture'),
 
-  getDisplayInfo: (): Promise<{ screenWidth: number; screenHeight: number; scaleFactor: number }> =>
+  getDisplayInfo: (): Promise<{ screenWidth: number; screenHeight: number; scaleFactor: number; displays?: any[] }> =>
     ipcRenderer.invoke('screen:get-display-info'),
 
   // ── ScreenUnderstandingEngine Python IPC ──────────────────────────────────
@@ -52,6 +52,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   verifyStateChange: (params: unknown): Promise<unknown> =>
     ipcRenderer.invoke('gemini:verify-state', params),
+
+  // ── DOM Bridge ───────────────────────────────────────────────────────────
+  getDomElements: (): Promise<unknown> =>
+    ipcRenderer.invoke('dom-bridge:get-elements'),
+
+  requestDomSnapshot: (): Promise<unknown> =>
+    ipcRenderer.invoke('dom-bridge:request-snapshot'),
+
+  getDomBridgeStatus: (): Promise<{ connected: boolean }> =>
+    ipcRenderer.invoke('dom-bridge:status'),
+
+  onDomBridgeSnapshot: (callback: (snapshot: unknown) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, snapshot: unknown) => callback(snapshot)
+    ipcRenderer.on('dom-bridge:snapshot', handler)
+    return () => ipcRenderer.removeListener('dom-bridge:snapshot', handler)
+  },
 
   // ── App Status ─────────────────────────────────────────────────────────────
   getApiStatus: (): Promise<{ hasKey: boolean; isDev: boolean }> =>
