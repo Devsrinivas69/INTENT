@@ -9,6 +9,15 @@ export default defineConfig({
     electron({
       main: {
         entry: 'electron/main.ts',
+        vite: {
+          build: {
+            rollupOptions: {
+              // Mark ws optional native dependencies as external
+              // so Vite does not try to bundle them
+              external: ['bufferutil', 'utf-8-validate'],
+            },
+          },
+        },
       },
       preload: {
         input: resolve(__dirname, 'electron/preload.ts'),
