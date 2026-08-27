@@ -183,13 +183,19 @@ export class ScreenUnderstandingEngine {
       return { valid: false, reason: 'Root window bounds rejected' }
     }
 
-    // 5. Target inside active application window (with tolerance)
+    // 5. Target inside active application window (reject Chrome tab/address bar area)
     const TOLERANCE = 50
-    if (x < winInfo.x - TOLERANCE || y < winInfo.y - TOLERANCE) {
-      return { valid: false, reason: `Target above/left of window: (${x},${y}) vs window (${winInfo.x},${winInfo.y})` }
+    if (y < winInfo.y + 65) {
+      return { valid: false, reason: `Target in browser header/tabs area: y=${y} vs min y=${winInfo.y + 65}` }
+    }
+    if (x < winInfo.x - TOLERANCE) {
+      return { valid: false, reason: `Target to left of window: x=${x} vs window x=${winInfo.x}` }
     }
     if (x + width > winInfo.x + winInfo.width + TOLERANCE) {
       return { valid: false, reason: 'Target extends beyond window right edge' }
+    }
+    if (y + height > winInfo.y + winInfo.height + TOLERANCE) {
+      return { valid: false, reason: 'Target extends beyond window bottom edge' }
     }
 
     // 6. Not off-screen entirely (multi-monitor: allow negative X/Y)
@@ -220,24 +226,37 @@ export class ScreenUnderstandingEngine {
     if (winInfo.app === 'canva') {
       const domElements = await this.getDomBridgeElements()
       if (domElements.length > 0) {
-        // Find best match by semantic ID or label similarity
+        // Find best match by semantic ID, label similarity, or synonyms
         const target_lower = level.targetText.toLowerCase()
-        for (const el of domElements) {
-          const label = (el.label || '').toLowerCase()
-          const semanticId = el.semanticId || ''
-          const isExactMatch = label === target_lower ||
-            semanticId === target_lower.replace(' ', '_') ||
-            label.includes(target_lower) ||
-            target_lower.includes(label)
+        const target_aliases = [
+          target_lower,
+          ...(level.targetText.toLowerCase().includes('bg') || level.targetText.toLowerCase().includes('background')
+            ? ['bg remover', 'background remover', 'remove background', 'edit', 'edit photo']
+            : []),
+          ...(level.targetText.toLowerCase().includes('edit')
+            ? ['edit photo', 'edit', 'edit image', 'bg remover', 'background remover']
+            : []),
+          ...(level.targetText.toLowerCase().includes('animate')
+            ? ['animate', 'add animation', 'animation', 'fade', 'pan']
+            : [])
+        ]
 
-          if (isExactMatch && el.bounds?.width > 4 && el.bounds?.height > 4) {
-            // DOM bridge gives CSS pixel coords — convert to physical using DPR from snapshot
-            // The extension already converts to physical (multiplied by devicePixelRatio)
+        for (const el of domElements) {
+          const label = (el.label || '').toLowerCase().trim()
+          const semanticId = (el.semanticId || '').toLowerCase().trim()
+          const isMatch = target_aliases.some(alias =>
+            label === alias ||
+            semanticId === alias.replace(' ', '_') ||
+            (label.length >= 3 && alias.includes(label)) ||
+            (alias.length >= 3 && label.includes(alias))
+          )
+
+          if (isMatch && el.bounds?.width > 4 && el.bounds?.height > 4) {
             const candidate = {
               ...el.bounds,
               text: el.label,
               type: targetType,
-              confidence: 0.98,
+              confidence: 0.99,
               source: 'dom_bridge',
             }
 

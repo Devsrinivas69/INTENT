@@ -41,6 +41,7 @@ export function AssistantPanel() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string>('')
   const [showDiagnostics, setShowDiagnostics] = useState(false)
+  const [autoAdvance, setAutoAdvance] = useState(false) // Default: requires human approval to advance
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -288,18 +289,19 @@ export function AssistantPanel() {
         if (result.verified && result.proof) {
           // Action detected and verified!
           console.log(`[INTENT] Step ${currentLevel.levelNumber} VERIFIED:`, result.proof)
-          setState('ACTION_DETECTING')
-
-          setTimeout(() => setState('VERIFYING'), 200)
+          setState('LEVEL_COMPLETE')
+          voiceService.speak('Step verified. Click continue when you are ready.')
 
           const updatedProofs = [...proofsAcc, result.proof]
           setCompletionProofs(updatedProofs)
 
-          setTimeout(async () => {
-            setState('LEVEL_COMPLETE')
-            voiceService.speak('Good.')
-            await executeLevel(wf, levelIdx + 1, updatedProofs)
-          }, 400)
+          // If auto-advance is enabled, advance after a 1.5s grace period
+          if (autoAdvance) {
+            setTimeout(async () => {
+              await executeLevel(wf, levelIdx + 1, updatedProofs)
+            }, 1500)
+          }
+          // Otherwise, INTENT WAITS FOR HUMAN APPROVAL!
         } else {
           // Keep polling every 1000ms
           scheduleVerification(wf, levelIdx, win, proofsAcc)
@@ -308,7 +310,28 @@ export function AssistantPanel() {
         scheduleVerification(wf, levelIdx, win, proofsAcc)
       }
     }, 1000)
-  }, [executeLevel])
+  }, [executeLevel, autoAdvance])
+
+  const handleManualAdvance = useCallback(async () => {
+    if (!workflow) return
+    if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
+    const currentLevel = workflow.levels[currentLevelIndex]
+    const syntheticProof: CompletionProof = {
+      levelId: currentLevel.id,
+      levelNumber: currentLevel.levelNumber,
+      actionDetected: true,
+      stateChanged: true,
+      evidence: ['Manual human confirmation'],
+      confidence: 1.0,
+      method: 'human_approval',
+      timestamp: Date.now(),
+      bounds: targetLock?.bounds || { x: 0, y: 0, width: 0, height: 0 },
+    }
+    const updatedProofs = [...completionProofs.filter(p => p.levelId !== currentLevel.id), syntheticProof]
+    setCompletionProofs(updatedProofs)
+    voiceService.speak('Continuing to next step.')
+    await executeLevel(workflow, currentLevelIndex + 1, updatedProofs)
+  }, [workflow, currentLevelIndex, completionProofs, targetLock, executeLevel])
 
   const handleStartTask = useCallback(async () => {
     if (!workflow) return
@@ -622,13 +645,45 @@ export function AssistantPanel() {
                   onReplay={() => voiceService.replay()}
                 />
 
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={handleRescan}
-                    className="w-full btn-outline rounded-[3px] py-2 text-xs uppercase font-mono"
-                  >
-                    ↺ RE-SCAN SCREEN
-                  </button>
+                {/* Primary Action Buttons: Manual Advance & Rescan */}
+                <div className="space-y-2 pt-1">
+                  {state === 'LEVEL_COMPLETE' ? (
+                    <button
+                      onClick={handleManualAdvance}
+                      className="w-full btn-white rounded-[3px] py-2.5 text-xs font-mono uppercase tracking-wider font-semibold animate-pulse"
+                    >
+                      {currentLevelIndex + 1 >= workflow.levels.length
+                        ? 'FINISH TASK ✓'
+                        : `CONTINUE TO STEP ${currentLevel.levelNumber + 1} →`}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleManualAdvance}
+                      className="w-full btn-white rounded-[3px] py-2 text-xs font-mono uppercase tracking-wider font-semibold"
+                    >
+                      {currentLevelIndex + 1 >= workflow.levels.length
+                        ? 'I DID THIS (COMPLETE TASK) ✓'
+                        : `I DID THIS → NEXT STEP ${currentLevel.levelNumber + 1}`}
+                    </button>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleRescan}
+                      className="flex-1 btn-outline rounded-[3px] py-1.5 text-[10px] uppercase font-mono text-white/60 hover:text-white"
+                    >
+                      ↺ RE-SCAN SCREEN
+                    </button>
+                    <label className="flex items-center gap-1.5 px-2 py-1 border border-white/10 rounded-[3px] text-[9px] text-white/50 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={autoAdvance}
+                        onChange={(e) => setAutoAdvance(e.target.checked)}
+                        className="accent-white"
+                      />
+                      <span>AUTO-ADVANCE</span>
+                    </label>
+                  </div>
                 </div>
               </motion.div>
             )}

@@ -1,23 +1,20 @@
 /**
- * INTENT — Canva DOM Bridge Content Script
+ * INTENT — Canva DOM Bridge Content Script v4.2
  *
  * Injected into Canva pages (canva.com).
- * Extracts physical screen coordinates of interactive elements using:
- *   - getBoundingClientRect() + devicePixelRatio for physical pixels
- *   - aria-label, role, title, accessible name for semantic identification
- *   - MutationObserver for real-time tracking of Canva UI state changes
- *   - Selection state detection via Canva's purple outline class changes
+ * Accurately extracts physical desktop screen coordinates of interactive elements by:
+ *   - Computing exact window header offset (window.outerHeight - window.innerHeight)
+ *   - Adding window.screenX and window.screenY to map viewport coords to absolute desktop space
+ *   - Multiplying by devicePixelRatio for physical hardware pixels
+ *   - Real-time tracking via MutationObserver
  *
- * Sends element snapshots to INTENT desktop app via WebSocket (port 18923).
- *
- * CRITICAL: This script does NOT move mouse, click, type, or simulate any action.
- * It is READ-ONLY. It only reads DOM state and reports coordinates.
+ * READ-ONLY: Never moves mouse, clicks, or controls browser.
  */
 
 'use strict';
 
 const INTENT_WS_PORT = 18923;
-const SCAN_DEBOUNCE_MS = 300;
+const SCAN_DEBOUNCE_MS = 250;
 const RECONNECT_INTERVAL_MS = 2000;
 
 let ws = null;
@@ -25,32 +22,29 @@ let reconnectTimer = null;
 let scanTimer = null;
 let lastSnapshot = null;
 
-// ── Semantic Aliases (matching knowledge/canva.json) ─────────────────────────
+// ── Semantic Aliases ─────────────────────────────────────────────────────────
 
 const SEMANTIC_LABELS = {
+  'bg remover': 'bg_remover',
+  'background remover': 'bg_remover',
+  'remove background': 'bg_remover',
   'edit photo': 'edit_photo',
   'edit image': 'edit_photo',
   'edit': 'edit_photo',
   'animate': 'animate',
   'add animation': 'animate',
   'animation': 'animate',
-  'background remover': 'bg_remover',
-  'bg remover': 'bg_remover',
-  'remove background': 'bg_remover',
   'position': 'position',
   'crop': 'crop',
   'flip': 'flip',
   'transparency': 'transparency',
-  'filters': 'filters',
-  'adjust': 'adjust',
-  'effects': 'effects',
   'magic studio': 'magic_studio',
+  'adjust': 'adjust',
+  'filters': 'filters',
+  'effects': 'effects',
   'fade': 'animation_fade',
   'pan': 'animation_pan',
   'rise': 'animation_rise',
-  'pop': 'animation_pop',
-  'wipe': 'animation_wipe',
-  'breathe': 'animation_breathe',
 };
 
 function getSemanticId(label) {
@@ -62,22 +56,33 @@ function getSemanticId(label) {
   return null;
 }
 
-// ── Physical Bounding Rect (accounts for devicePixelRatio, scroll, zoom) ─────
+// ── Desktop Physical Coordinate Computation ─────────────────────────────────
 
 function getPhysicalRect(el) {
   const rect = el.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
-  // getBoundingClientRect() is in CSS pixels. Convert to physical screen pixels.
+
+  // Compute Chrome browser chrome / titlebar / tabbar height in CSS pixels
+  const navHeight = Math.max(0, window.outerHeight - window.innerHeight);
+  const screenLeft = window.screenX !== undefined ? window.screenX : (window.screenLeft || 0);
+  const screenTop = window.screenY !== undefined ? window.screenY : (window.screenTop || 0);
+
+  // Absolute desktop coordinates in CSS pixels
+  const desktopCssX = screenLeft + rect.left;
+  const desktopCssY = screenTop + navHeight + rect.top;
+
   return {
-    x: Math.round((rect.left + window.scrollX) * dpr),
-    y: Math.round((rect.top + window.scrollY) * dpr),
+    // Physical hardware pixels (aligned with Windows OS desktop screen space)
+    x: Math.round(desktopCssX * dpr),
+    y: Math.round(desktopCssY * dpr),
     width: Math.round(rect.width * dpr),
     height: Math.round(rect.height * dpr),
-    // Also store viewport-relative (CSS) coords for debugging
-    cssX: Math.round(rect.left),
-    cssY: Math.round(rect.top),
-    cssWidth: Math.round(rect.width),
-    cssHeight: Math.round(rect.height),
+    // Viewport-relative for reference
+    viewportX: Math.round(rect.left),
+    viewportY: Math.round(rect.top),
+    viewportWidth: Math.round(rect.width),
+    viewportHeight: Math.round(rect.height),
+    navHeight,
   };
 }
 
@@ -90,74 +95,33 @@ function isVisible(el) {
   return style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0';
 }
 
-function isInteractive(el) {
-  const tag = el.tagName.toLowerCase();
-  const role = el.getAttribute('role') || '';
-  if (['button', 'a', 'input', 'select', 'textarea'].includes(tag)) return true;
-  if (['button', 'menuitem', 'tab', 'option', 'checkbox', 'radio', 'link', 'combobox'].includes(role)) return true;
-  if (el.getAttribute('tabindex') !== null) return true;
-  if (el.onclick || el.getAttribute('data-testid')) return true;
-  return false;
-}
-
 function getLabel(el) {
   return (
     el.getAttribute('aria-label') ||
     el.getAttribute('title') ||
     el.getAttribute('data-tooltip') ||
-    el.getAttribute('aria-describedby') ||
+    el.innerText?.trim().substring(0, 80) ||
     el.textContent?.trim().substring(0, 80) ||
     ''
   );
 }
 
-// ── Canvas Selection State Detection ─────────────────────────────────────────
-
-function detectSelectionState() {
-  // Canva wraps selected elements in a container with a specific data attribute
-  // or adds a selection ring overlay. Look for indicators in the DOM.
-  const selectionIndicators = [
-    // Canva adds data-selection or similar attributes
-    '[data-element-selected="true"]',
-    '[aria-selected="true"]',
-    '[data-focused="true"]',
-  ];
-
-  for (const selector of selectionIndicators) {
-    try {
-      const found = document.querySelector(selector);
-      if (found && isVisible(found)) {
-        const rect = getPhysicalRect(found);
-        return {
-          elementSelected: true,
-          bounds: rect,
-          label: getLabel(found),
-        };
-      }
-    } catch (e) { /* ignore */ }
-  }
-
-  return { elementSelected: false };
-}
-
-// ── Full Element Scan ─────────────────────────────────────────────────────────
+// ── Element Scanner ─────────────────────────────────────────────────────────
 
 function scanElements() {
   const elements = [];
   const seen = new Set();
 
-  // Priority query selectors for Canva's key controls
-  const prioritySelectors = [
-    // Toolbar buttons (aria-label is most reliable for Canva)
+  const selectors = [
     '[role="button"][aria-label]',
     'button[aria-label]',
-    '[role="menuitem"][aria-label]',
+    'button',
+    '[role="button"]',
     '[role="tab"][aria-label]',
-    // Any button or interactive with a label
-    '[aria-label]:not(div[aria-label=""]):not(span[aria-label=""])',
+    '[role="menuitem"][aria-label]',
   ];
 
-  for (const selector of prioritySelectors) {
+  for (const selector of selectors) {
     try {
       const found = document.querySelectorAll(selector);
       for (const el of found) {
@@ -170,9 +134,8 @@ function scanElements() {
         seen.add(el);
         const rect = getPhysicalRect(el);
 
-        // Skip giant containers (> 70% of viewport)
-        if (rect.cssWidth > window.innerWidth * 0.70 && rect.cssHeight > window.innerHeight * 0.70) continue;
-        // Skip invisible size
+        // Filter out full screen containers
+        if (rect.viewportWidth > window.innerWidth * 0.70 && rect.viewportHeight > window.innerHeight * 0.70) continue;
         if (rect.width <= 4 || rect.height <= 4) continue;
 
         const semanticId = getSemanticId(label);
@@ -180,26 +143,25 @@ function scanElements() {
 
         elements.push({
           id: `dom_${elements.length}`,
-          source: 'dom',
+          source: 'dom_bridge',
           label,
           semanticId,
           role,
-          tag: el.tagName.toLowerCase(),
           bounds: {
             x: rect.x,
             y: rect.y,
             width: rect.width,
             height: rect.height,
           },
-          cssBounds: {
-            x: rect.cssX,
-            y: rect.cssY,
-            width: rect.cssWidth,
-            height: rect.cssHeight,
+          viewportBounds: {
+            x: rect.viewportX,
+            y: rect.viewportY,
+            width: rect.viewportWidth,
+            height: rect.viewportHeight,
           },
           visible: true,
           enabled: !el.hasAttribute('disabled') && !el.getAttribute('aria-disabled'),
-          confidence: 0.98,
+          confidence: 0.99,
         });
       }
     } catch (e) { /* ignore */ }
@@ -212,7 +174,6 @@ function scanElements() {
 
 function buildSnapshot() {
   const elements = scanElements();
-  const selection = detectSelectionState();
 
   return {
     type: 'canva_dom_snapshot',
@@ -222,12 +183,12 @@ function buildSnapshot() {
       width: window.innerWidth,
       height: window.innerHeight,
     },
-    devicePixelRatio: window.devicePixelRatio || 1,
-    scrollOffset: {
-      x: window.scrollX,
-      y: window.scrollY,
+    screenOffset: {
+      x: window.screenX || window.screenLeft || 0,
+      y: window.screenY || window.screenTop || 0,
+      navHeight: Math.max(0, window.outerHeight - window.innerHeight),
     },
-    selectionState: selection,
+    devicePixelRatio: window.devicePixelRatio || 1,
     elements,
   };
 }
@@ -237,8 +198,6 @@ function sendSnapshot() {
 
   try {
     const snapshot = buildSnapshot();
-
-    // Only send if meaningfully different from last snapshot
     const snapshotStr = JSON.stringify(snapshot.elements.map(e => e.label).sort());
     if (snapshotStr === lastSnapshot) return;
     lastSnapshot = snapshotStr;
@@ -265,7 +224,6 @@ function connectWS() {
     ws.onopen = () => {
       console.log('[INTENT Bridge] Connected to INTENT desktop app');
       if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
-      // Send initial snapshot immediately
       sendSnapshot();
     };
 
@@ -276,9 +234,7 @@ function connectWS() {
       }
     };
 
-    ws.onerror = () => {
-      // Silently fail — INTENT may not be running
-    };
+    ws.onerror = () => {};
 
     ws.onmessage = (event) => {
       try {
@@ -295,13 +251,12 @@ function connectWS() {
   }
 }
 
-// ── MutationObserver — Track DOM Changes ──────────────────────────────────────
+// ── MutationObserver ──────────────────────────────────────────────────────────
 
 const observer = new MutationObserver((mutations) => {
-  // Only react to meaningful DOM changes (not text updates within cells)
   const relevant = mutations.some(m =>
     m.type === 'childList' && m.addedNodes.length > 0 ||
-    m.type === 'attributes' && ['aria-label', 'aria-selected', 'data-element-selected', 'aria-hidden'].includes(m.attributeName)
+    m.type === 'attributes' && ['aria-label', 'aria-selected', 'class'].includes(m.attributeName)
   );
   if (relevant) scheduleScan();
 });
@@ -310,14 +265,9 @@ observer.observe(document.body, {
   childList: true,
   subtree: true,
   attributes: true,
-  attributeFilter: ['aria-label', 'aria-selected', 'data-element-selected', 'aria-hidden', 'class'],
+  attributeFilter: ['aria-label', 'aria-selected', 'class'],
 });
 
-// ── Init ─────────────────────────────────────────────────────────────────────
-
 connectWS();
-
-// Periodic heartbeat scan (handles cases where MutationObserver misses changes)
 setInterval(sendSnapshot, 2000);
-
-console.log('[INTENT Bridge] Canva DOM bridge active');
+console.log('[INTENT Bridge v4.2] Canva DOM bridge active with absolute desktop coordinate mapping');
