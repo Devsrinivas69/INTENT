@@ -1,5 +1,5 @@
 """
-INTENT Python Helper — Main Process v3.4
+INTENT Python Helper — Main Process v4.1
 Deterministic multi-tier target detection & state transition verification.
 """
 
@@ -32,7 +32,7 @@ def process(cmd: dict) -> dict:
 
     # ── ping ──────────────────────────────────────────────────────────────────
     if action == 'ping':
-        return {'status': 'ok', 'version': '3.4.0'}
+        return {'status': 'ok', 'version': '4.1.0'}
 
     # ── get_window_info ───────────────────────────────────────────────────────
     elif action == 'get_window_info':
@@ -85,7 +85,7 @@ def process(cmd: dict) -> dict:
         level_number = cmd.get('level_number', 1)
         screenshot = cmd.get('screenshot')
 
-        # ── SPECIAL CASE: LEVEL 1 CANVA (CANVAS_OBJECT: Select image) ─────────
+        # ── TIER 0 / 1: LEVEL 1 CANVA (CANVAS_OBJECT: Select image) ───────────
         if app_name == 'canva' and (level_number == 1 or target_type == 'CANVAS_OBJECT' or 'image' in target_text.lower() or 'canvas' in target_text.lower()):
             if screenshot:
                 canvas_obj = detect_canvas_image_object(screenshot, win_x=win_x, win_y=win_y, scale_factor=scale_factor)
@@ -98,7 +98,7 @@ def process(cmd: dict) -> dict:
                         'method': 'opencv_canvas',
                     }
 
-        # ── CASE 2: EXCEL UI AUTOMATION ───────────────────────────────────────
+        # ── TIER 1: EXCEL UI AUTOMATION ───────────────────────────────────────
         if app_name == 'excel' and hwnd:
             uia_match = find_element_in_hwnd(hwnd, target_text)
             if uia_match and uia_match.get('confidence', 0) >= 0.70:
@@ -112,7 +112,7 @@ def process(cmd: dict) -> dict:
                         'method': 'uia',
                     }
 
-        # ── CASE 3: WINDOWS NATIVE OCR FOR BUTTONS & CONTROLS ─────────────────
+        # ── TIER 3: WINDOWS NATIVE OCR FOR BUTTONS & CONTROLS ─────────────────
         if screenshot:
             screen_map = build_screen_map(
                 hwnd=hwnd,
@@ -124,14 +124,36 @@ def process(cmd: dict) -> dict:
                 screenshot_b64=screenshot,
             )
 
-            candidates = find_candidates_in_map(screen_map, target_text, min_similarity=0.45)
+            # Minimum similarity 0.50 with robust text_similarity
+            candidates = find_candidates_in_map(screen_map, target_text, min_similarity=0.50)
 
-            # Filter out giant container candidates
-            valid_candidates = [
-                c for c in candidates
-                if not (c.get('width', 0) > win_w * 0.70 and c.get('height', 0) > win_h * 0.70)
-                and not (c.get('x', 0) == 0 and c.get('y', 0) == 0 and c.get('width', 0) == win_w)
-            ]
+            # Strict filtering:
+            # 1. Reject full containers
+            # 2. Reject root window
+            # 3. Reject anything in Chrome tabs / URL bar area (y < win_y + 70)
+            # 4. Reject anything outside window
+            # 5. Reject single/two-character false matches
+            valid_candidates = []
+            for c in candidates:
+                w = c.get('width', 0)
+                h = c.get('height', 0)
+                x = c.get('x', 0)
+                y = c.get('y', 0)
+                txt = c.get('text', '').strip()
+
+                if len(txt) < 2:
+                    continue
+                if w > win_w * 0.70 and h > win_h * 0.70:
+                    continue
+                if x == 0 and y == 0 and w >= win_w * 0.90:
+                    continue
+                # Reject Chrome browser tabs/navigation bar
+                if y < win_y + 70:
+                    continue
+                if y > win_y + win_h:
+                    continue
+
+                valid_candidates.append(c)
 
             if valid_candidates:
                 best = valid_candidates[0]
@@ -156,7 +178,7 @@ def process(cmd: dict) -> dict:
         return {
             'found': False,
             'stable': False,
-            'reason': f'No target control matched for "{target_text}"',
+            'reason': f'No target control matched for "{target_text}" within application bounds',
             'candidates': [],
         }
 
@@ -164,6 +186,8 @@ def process(cmd: dict) -> dict:
     elif action == 'verify_level':
         hwnd = cmd.get('hwnd')
         app_name = cmd.get('application', '')
+        win_x = cmd.get('x', 0)
+        win_y = cmd.get('y', 0)
         level_number = cmd.get('level_number', 1)
         condition = cmd.get('condition', '')
         target_bounds = cmd.get('target_bounds')
@@ -173,43 +197,42 @@ def process(cmd: dict) -> dict:
         # ── LEVEL 1 CANVA: PURPLE SELECTION OUTLINE MATCHING TARGET ───────────
         if app_name == 'canva' and level_number == 1:
             if screenshot_after_b64:
-                sel = detect_canva_selection_state(screenshot_after_b64, target_bounds=target_bounds)
+                sel = detect_canva_selection_state(screenshot_after_b64, target_bounds=target_bounds, win_x=win_x, win_y=win_y)
                 if sel.get('selected'):
                     return {
                         'completed': True,
                         'confidence': sel.get('confidence', 0.96),
-                        'evidence': f'Canva purple selection outline detected on target (IoU={sel.get("iou", 1.0)})',
+                        'evidence': f'Canva purple selection outline confirmed on image target (IoU={sel.get("iou", 1.0)})',
                         'method': 'visual_selection_border',
                         'bounds': sel.get('bounds'),
                     }
 
-        # ── LEVEL 2 CANVA: EDIT PHOTO / ANIMATION PANEL APPEARANCE ────────────
+        # ── LEVEL 2 CANVA: EDIT PHOTO / ANIMATION SIDE PANEL APPEARANCE ───────
         if app_name == 'canva' and level_number == 2:
             if screenshot_after_b64:
-                ocr_items = ocr_full_image(screenshot_after_b64)
-                texts = [item['text'] for item in ocr_items]
+                ocr_items = ocr_full_image(screenshot_after_b64, win_x=win_x, win_y=win_y)
 
-                # Check Edit photo panel
-                edit_panel = detect_edit_photo_panel(screenshot_after_b64, texts)
+                # Check Edit photo left sidebar panel
+                edit_panel = detect_edit_photo_panel(screenshot_after_b64, ocr_items, win_x=win_x, win_y=win_y)
                 if edit_panel.get('panel_open'):
                     return {
                         'completed': True,
                         'confidence': 0.95,
-                        'evidence': f'Edit photo tools panel opened ({", ".join(edit_panel.get("matches", []))})',
+                        'evidence': f'Edit photo tools panel confirmed open in left sidebar ({", ".join(edit_panel.get("matches", []))})',
                         'method': 'edit_photo_panel_ocr',
                     }
 
-                # Check Animation panel
-                anim_panel = detect_animation_panel(texts)
+                # Check Animation left sidebar panel
+                anim_panel = detect_animation_panel(ocr_items, win_x=win_x, win_y=win_y)
                 if anim_panel.get('panel_open'):
                     return {
                         'completed': True,
                         'confidence': 0.95,
-                        'evidence': f'Animation styles panel opened ({", ".join(anim_panel.get("matches", []))})',
+                        'evidence': f'Animation styles panel confirmed open in left sidebar ({", ".join(anim_panel.get("matches", []))})',
                         'method': 'animation_panel_ocr',
                     }
 
-        # ── LEVEL 3 CANVA: BACKGROUND REMOVAL TRANSITION ──────────────────────
+        # ── LEVEL 3 CANVA: BACKGROUND REMOVAL ACTION CONFIRMATION ─────────────
         if app_name == 'canva' and level_number == 3:
             if screenshot_before_b64 and screenshot_after_b64:
                 canvas_diff = verify_canvas_background_removed(
@@ -223,16 +246,19 @@ def process(cmd: dict) -> dict:
                         'method': canvas_diff['method'],
                     }
 
-        # ── LEVEL 4 CANVA: VERIFY RESULT ──────────────────────────────────────
+        # ── LEVEL 4 CANVA: VERIFY FINAL ISOLATED IMAGE ────────────────────────
         if app_name == 'canva' and level_number == 4:
             if screenshot_before_b64 and screenshot_after_b64:
-                diff = compute_screen_diff(screenshot_before_b64, screenshot_after_b64)
-                return {
-                    'completed': True,
-                    'confidence': 0.92,
-                    'evidence': 'Canvas final state confirmed',
-                    'method': 'canvas_verification',
-                }
+                canvas_result = verify_canvas_background_removed(
+                    screenshot_before_b64, screenshot_after_b64, target_bounds=target_bounds
+                )
+                if canvas_result.get('completed') and canvas_result.get('confidence', 0) >= 0.80:
+                    return {
+                        'completed': True,
+                        'confidence': canvas_result['confidence'],
+                        'evidence': f'Subject background removal verified: {canvas_result["evidence"]}',
+                        'method': canvas_result['method'],
+                    }
 
         # ── EXCEL UIA VERIFICATION ────────────────────────────────────────────
         if app_name == 'excel' and hwnd:
@@ -240,25 +266,25 @@ def process(cmd: dict) -> dict:
             if uia_result.get('completed') and uia_result.get('confidence', 0) >= 0.70:
                 return {**uia_result, 'method': 'uia'}
 
-        # ── SCREEN DIFF FALLBACK (Requires action detection) ───────────────────
+        # ── SCREEN DIFF FALLBACK (High threshold to avoid noise) ──────────────
         if screenshot_before_b64 and screenshot_after_b64:
             diff = compute_screen_diff(screenshot_before_b64, screenshot_after_b64)
-            if diff.get('changed') and diff.get('diff_score', 0) > 0.005:
+            if diff.get('changed') and diff.get('diff_score', 0) > 0.05:
                 return {
                     'completed': True,
-                    'confidence': min(0.85, 0.50 + diff['diff_score'] * 10),
-                    'evidence': f'Screen state change detected (diff={diff["diff_score"]:.3f})',
+                    'confidence': min(0.85, 0.50 + diff['diff_score'] * 4),
+                    'evidence': f'Significant screen state transition detected (diff={diff["diff_score"]:.3f})',
                     'method': 'screen_diff',
                 }
 
-        return {'completed': False, 'confidence': 0.3, 'evidence': 'Waiting for user action'}
+        return {'completed': False, 'confidence': 0.1, 'evidence': 'Waiting for user action'}
 
     return {'error': f'Unknown action: {action}'}
 
 
 def main():
     sys.stdout.reconfigure(line_buffering=True)
-    print(json.dumps({'status': 'ready', 'version': '3.4.0'}))
+    print(json.dumps({'status': 'ready', 'version': '4.1.0'}))
 
     for line in sys.stdin:
         line = line.strip()

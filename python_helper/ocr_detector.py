@@ -28,7 +28,7 @@ def normalize_text(text: str) -> str:
 SYNONYM_GROUPS = [
     {'bg remover', 'background remover', 'remove background', 'background removal', 'bg remove', 'eraser'},
     {'magic studio', 'magic edit', 'magic expand', 'effects', 'photo editor'},
-    {'edit photo', 'edit image', 'photo editor', 'effects', 'adjust', 'filter', 'tools'},
+    {'edit photo', 'edit', 'edit image', 'photo editor', 'effects', 'adjust', 'filter', 'tools'},
     {'animate', 'animation', 'add animation', 'fade', 'pan', 'rise', 'pop', 'motion'},
     {'insert', 'insert tab', 'charts', 'recommended charts', 'column', 'bar', 'pie'},
     {'image', 'photo', 'canvas', 'design', 'whiteboard', 'doc', 'sheet', 'website', 'presentation', 'create a design'},
@@ -37,8 +37,8 @@ SYNONYM_GROUPS = [
 
 def text_similarity(a: str, b: str) -> float:
     """
-    Returns similarity score between two strings.
-    1.0 = exact, 0.9 = substring, 0.8 = synonym match, etc.
+    Returns similarity score between two strings (0.0 to 1.0).
+    Robust against single-character false positives.
     """
     a_n = normalize_text(a)
     b_n = normalize_text(b)
@@ -46,23 +46,53 @@ def text_similarity(a: str, b: str) -> float:
     if not a_n or not b_n:
         return 0.0
 
+    # Exact match
     if a_n == b_n:
         return 1.0
-    if a_n in b_n or b_n in a_n:
-        return 0.92
 
-    # Synonym group match (exact membership)
+    # Reject single-character or two-character partial matches (e.g. 'o' matching 'edit photo')
+    if len(a_n) < 3 and a_n != b_n:
+        # Only allow if it's an exact known acronym (e.g., 'bg')
+        if a_n in {'bg', 'fx'} and a_n in b_n.split():
+            return 0.85
+        return 0.0
+
+    if len(b_n) < 3 and a_n != b_n:
+        if b_n in {'bg', 'fx'} and b_n in a_n.split():
+            return 0.85
+        return 0.0
+
+    # Synonym group match (exact membership check)
     for group in SYNONYM_GROUPS:
+        if any(g == a_n for g in group) and any(g == b_n for g in group):
+            return 0.95
         if any(g in a_n for g in group) and any(g in b_n for g in group):
             return 0.88
 
-    # Word overlap
-    a_words = set(a_n.split())
-    b_words = set(b_n.split())
+    # Word-boundary substring match (e.g. 'edit' in 'edit photo', or 'animate' in 'add animation')
+    a_words = a_n.split()
+    b_words = b_n.split()
+
+    if a_n in b_words or b_n in a_words:
+        return 0.92
+
+    # Whole phrase substring (e.g. 'bg remover' inside 'click bg remover')
+    if (a_n in b_n and len(a_n) >= 4) or (b_n in a_n and len(b_n) >= 4):
+        shorter_len = min(len(a_n), len(b_n))
+        longer_len = max(len(a_n), len(b_n))
+        ratio = shorter_len / longer_len
+        if ratio >= 0.4:
+            return round(0.75 + ratio * 0.20, 2)
+
+    # Word overlap for multi-word phrases
     if a_words and b_words:
-        overlap = len(a_words & b_words) / max(len(a_words), len(b_words))
-        if overlap >= 0.5:
-            return 0.70 + overlap * 0.25
+        set_a = set(a_words)
+        set_b = set(b_words)
+        overlap = len(set_a & set_b)
+        if overlap > 0:
+            jaccard = overlap / len(set_a | set_b)
+            if jaccard >= 0.5:
+                return round(0.70 + jaccard * 0.25, 2)
 
     return 0.0
 
@@ -98,13 +128,18 @@ async def _run_winrt_ocr(b64_image: str):
             if not line.words:
                 continue
 
+            line_text = line.text.strip()
+            # Ignore single stray characters
+            if len(line_text) < 2:
+                continue
+
             min_x = min(w.bounding_rect.x for w in line.words)
             min_y = min(w.bounding_rect.y for w in line.words)
             max_x = max(w.bounding_rect.x + w.bounding_rect.width for w in line.words)
             max_y = max(w.bounding_rect.y + w.bounding_rect.height for w in line.words)
 
             items.append({
-                'text': line.text.strip(),
+                'text': line_text,
                 'x': int(min_x),
                 'y': int(min_y),
                 'width': int(max_x - min_x),
@@ -113,11 +148,14 @@ async def _run_winrt_ocr(b64_image: str):
                 'source': 'winrt_ocr'
             })
 
-            # 2. Also add individual words
+            # 2. Add individual multi-letter words (>= 2 chars)
             for word in line.words:
+                w_text = word.text.strip()
+                if len(w_text) < 2:
+                    continue
                 r = word.bounding_rect
                 items.append({
-                    'text': word.text.strip(),
+                    'text': w_text,
                     'x': int(r.x),
                     'y': int(r.y),
                     'width': int(r.width),

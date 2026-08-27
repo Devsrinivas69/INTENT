@@ -75,7 +75,22 @@ def detect_canvas_image_object(b64_image: str, win_x: int = 0, win_y: int = 0, s
     h, w = img.shape[:2]
     ws = detect_canva_workspace(img)
 
-    # Crop to workspace
+    # First check if there is an active purple selection box (selected image)
+    sel = detect_canva_selection_state(b64_image, win_x=win_x, win_y=win_y)
+    if sel.get('selected') and sel.get('bounds'):
+        sb = sel['bounds']
+        return {
+            'x': sb['x'],
+            'y': sb['y'],
+            'width': sb['width'],
+            'height': sb['height'],
+            'confidence': 0.98,
+            'type': 'CANVAS_OBJECT',
+            'text': 'Image on Canvas',
+            'source': 'canva_purple_selection',
+        }
+
+    # Otherwise detect the image contours on workspace
     ws_crop = img[ws['y']:ws['y']+ws['height'], ws['x']:ws['x']+ws['width']]
     if ws_crop.size == 0:
         return None
@@ -183,8 +198,7 @@ def detect_canva_selection_state(b64_image: str, target_bounds: dict = None, win
                 best_iou = 1.0
 
     if best_match:
-        # If target bounds were provided, require IoU >= 0.40 to prevent false-positives on unrelated elements
-        if target_bounds and best_iou < 0.40:
+        if target_bounds and best_iou < 0.30:
             return {
                 'selected': False,
                 'confidence': 0.3,
@@ -204,16 +218,29 @@ def detect_canva_selection_state(b64_image: str, target_bounds: dict = None, win
 
 # ─── 4. Edit Photo Panel Appearance Detector ─────────────────────────────────
 
-def detect_edit_photo_panel(b64_image: str, ocr_texts: list) -> dict:
+def detect_edit_photo_panel(b64_image: str, ocr_items: list, win_x: int = 0, win_y: int = 0) -> dict:
     """
-    Checks if the left Edit Photo / Magic Studio sidebar has opened.
-    Matches tool keywords: 'bg remover', 'background remover', 'magic studio', 'adjust', 'filters', 'effects'.
+    Checks if the left Edit Photo / Magic Studio sidebar panel has opened.
+    Crucially: inspects only elements in the LEFT SIDEBAR region (x < win_x + 450, y > win_y + 120).
+    Requires matching at least 2 distinct panel tool keywords (or a clear Magic Studio header).
     """
-    lower_texts = [t.lower() for t in ocr_texts]
-    keywords = ['bg remover', 'background remover', 'magic studio', 'adjust', 'filters', 'effects']
+    panel_items = []
+    for item in ocr_items:
+        text = item.get('text', '') if isinstance(item, dict) else str(item)
+        x = item.get('x', 0) if isinstance(item, dict) else 0
+        y = item.get('y', 0) if isinstance(item, dict) else 0
 
-    matches = [k for k in keywords if any(k in t for t in lower_texts)]
-    if matches:
+        # Filter strictly to left sidebar panel area
+        if isinstance(item, dict):
+            if x > win_x + 450 or y < win_y + 110:
+                continue
+        panel_items.append(text.lower())
+
+    keywords = ['magic studio', 'bg remover', 'background remover', 'adjust', 'filters', 'effects', 'magic edit', 'magic expand', 'intensity', 'tools', 'shadows', 'autofocus']
+    matches = [k for k in keywords if any(k in t for t in panel_items)]
+
+    # Need at least 2 panel tool indicators or 'magic studio' to confirm the left panel is open
+    if 'magic studio' in matches or len(matches) >= 2:
         return {
             'panel_open': True,
             'confidence': 0.95,
@@ -226,16 +253,26 @@ def detect_edit_photo_panel(b64_image: str, ocr_texts: list) -> dict:
 
 # ─── 5. Animation Panel Appearance Detector ──────────────────────────────────
 
-def detect_animation_panel(ocr_texts: list) -> dict:
+def detect_animation_panel(ocr_items: list, win_x: int = 0, win_y: int = 0) -> dict:
     """
     Checks if the left Animation styles sidebar has opened.
-    Matches animation presets: 'fade', 'pan', 'rise', 'pop', 'wipe', 'breathe', 'page animations', 'photo animations'.
+    Filters to left sidebar panel area.
     """
-    lower_texts = [t.lower() for t in ocr_texts]
-    keywords = ['fade', 'pan', 'rise', 'pop', 'wipe', 'breathe', 'page animations', 'photo animations', 'element animations']
+    panel_items = []
+    for item in ocr_items:
+        text = item.get('text', '') if isinstance(item, dict) else str(item)
+        x = item.get('x', 0) if isinstance(item, dict) else 0
+        y = item.get('y', 0) if isinstance(item, dict) else 0
 
-    matches = [k for k in keywords if any(k in t for t in lower_texts)]
-    if matches:
+        if isinstance(item, dict):
+            if x > win_x + 450 or y < win_y + 110:
+                continue
+        panel_items.append(text.lower())
+
+    keywords = ['fade', 'pan', 'rise', 'pop', 'wipe', 'breathe', 'page animations', 'photo animations', 'element animations', 'basics', 'scale']
+    matches = [k for k in keywords if any(k in t for t in panel_items)]
+
+    if len(matches) >= 2:
         return {
             'panel_open': True,
             'confidence': 0.95,
@@ -263,10 +300,10 @@ def verify_canvas_background_removed(b64_baseline: str, b64_current: str, target
 
     # Crop to target region if provided
     if target_bounds:
-        tx = max(0, target_bounds['x'])
-        ty = max(0, target_bounds['y'])
-        tw = min(img_base.shape[1] - tx, target_bounds['width'])
-        th = min(img_base.shape[0] - ty, target_bounds['height'])
+        tx = max(0, int(target_bounds['x']))
+        ty = max(0, int(target_bounds['y']))
+        tw = min(img_base.shape[1] - tx, int(target_bounds['width']))
+        th = min(img_base.shape[0] - ty, int(target_bounds['height']))
         crop_base = img_base[ty:ty+th, tx:tx+tw]
         crop_curr = img_curr[ty:ty+th, tx:tx+tw]
     else:
@@ -286,8 +323,8 @@ def verify_canvas_background_removed(b64_baseline: str, b64_current: str, target
     changed_pixels = int(np.sum(thresh > 0))
     ratio = changed_pixels / max(1, total_pixels)
 
-    # Significant change in target region (> 5% of pixels changed)
-    if ratio > 0.05:
+    # Significant change in target region (> 8% of pixels changed in canvas region)
+    if ratio > 0.08:
         return {
             'completed': True,
             'confidence': 0.94,
@@ -322,7 +359,7 @@ def compute_screen_diff(b64_before: str, b64_after: str, threshold: int = 25) ->
     diff_score = changed_pixels / total_pixels
 
     return {
-        'changed': diff_score > 0.003,
+        'changed': diff_score > 0.015,
         'diff_score': round(diff_score, 4),
         'changed_pixels': changed_pixels,
     }
