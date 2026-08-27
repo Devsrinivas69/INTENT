@@ -1,0 +1,99 @@
+{
+  "application": "canva",
+  "aliases": {
+    "edit_photo": [
+      "Edit photo",
+      "Edit Photo",
+      "Edit",
+      "Edit image",
+      "Edit Image",
+      "Photo editor",
+      "Effects",
+      "Magic Studio"
+    ],
+    "bg_remover": [
+      "BG Remover",
+      "Background Remover",
+      "Remove Background",
+      "Remove background",
+      "Magic Studio BG Remover",
+      "Background Erase",
+      "bg remover",
+      "bg removal"
+    ],
+    "animate": [
+      "Animate",
+      "Add Animation",
+      "Animation",
+      "Page Animation",
+      "Element Animation",
+      "Photo Animation",
+      "Create Animation"
+    ],
+    "position": [
+      "Position",
+      "Position & Layers",
+      "Arrange",
+      "Layers",
+      "Align",
+      "Layer Order"
+    ],
+    "crop": [
+      "Crop",
+      "Smart Crop",
+      "Crop Image",
+      "Resize Image"
+    ],
+    "flip": [
+      "Flip",
+      "Flip Horizontal",
+      "Flip Vertical"
+    ],
+    "transparency": [
+      "Transparency",
+      "Opacity",
+      "Alpha"
+    ],
+    "templates": [
+      "Templates",
+      "Design",
+      "Layouts",
+      "Template Library"
+    ],
+    "elements": [
+      "Elements",
+      "Graphics",
+      "Shapes",
+      "Stickers",
+      "Photos",
+      "Icons"
+    ],
+    "uploads": [
+      "Uploads",
+      "Upload files",
+      "My media",
+      "Upload Images"
+    ],
+    "text": [
+      "Text",
+      "Add Text",
+      "Heading",
+      "Subheading",
+      "Body text",
+      "Font"
+    ],
+    "share": [
+      "Share",
+      "Export",
+      "Publish",
+      "Download Menu"
+    ],
+    "download": [
+      "Download",
+      "Save file",
+      "Save image",
+      "Export PNG",
+      "Export PDF"
+    ]
+  }
+}

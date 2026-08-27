@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IntentDataRecord",
+  "description": "Standardized schema for INTENT grounding datasets (Canva, Excel, Desktop GUI)",
+  "type": "object",
+  "required": [
+    "task",
+    "step",
+    "application",
+    "instruction",
+    "target",
+    "target_type",
+    "bbox",
+    "click_point",
+    "source",
+    "license",
+    "resolution",
+    "confidence"
+  ],
+  "properties": {
+    "task": {
+      "type": "string",
+      "description": "Natural language high-level goal, e.g. 'remove_background', 'create_chart'"
+    },
+    "step": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "1-indexed step number within the multi-level workflow"
+    },
+    "application": {
+      "type": "string",
+      "enum": ["canva", "excel", "windows_os", "generic_gui"],
+      "description": "Target desktop or web application"
+    },
+    "application_version": {
+      "type": "string",
+      "description": "Application or web build version if known, e.g. 'Excel 365 v2401', 'Canva Web 2026.08'"
+    },
+    "instruction": {
+      "type": "string",
+      "description": "User-facing step instruction, e.g. 'Click Edit photo in the top toolbar'"
+    },
+    "screen_before": {
+      "type": "string",
+      "description": "Relative file path or Base64 encoding of the pre-action screenshot"
+    },
+    "screen_after": {
+      "type": "string",
+      "description": "Relative file path or Base64 encoding of the post-action screenshot"
+    },
+    "target": {
+      "type": "string",
+      "description": "Canonical semantic name of target UI control, e.g. 'Edit photo', 'Insert tab'"
+    },
+    "target_type": {
+      "type": "string",
+      "enum": [
+        "button",
+        "tab",
+        "menu_item",
+        "canvas_object",
+        "input",
+        "dropdown",
+        "checkbox",
+        "radio",
+        "cell",
+        "panel",
+        "toolbar",
+        "dialog"
+      ],
+      "description": "Semantic UI control classification"
+    },
+    "parent_container": {
+      "type": "string",
+      "description": "Parent container or region, e.g. 'top_contextual_toolbar', 'ribbon_insert_group'"
+    },
+    "bbox": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4,
+      "description": "Physical bounding box coordinates [x, y, width, height] in hardware desktop pixels"
+    },
+    "normalized_bbox": {
+      "type": "array",
+      "items": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+      "minItems": 4,
+      "maxItems": 4,
+      "description": "Normalized bounding box [ymin, xmin, ymax, xmax] scaled 0.0 to 1.0"
+    },
+    "click_point": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Recommended Intent Cursor anchor coordinate [x, y] in hardware desktop pixels"
+    },
+    "verification_condition": {
+      "type": "string",
+      "description": "Visual or programmatic state change condition to confirm completion"
+    },
+    "verification_method": {
+      "type": "string",
+      "enum": [
+        "visual_selection_border",
+        "edit_photo_panel_ocr",
+        "animation_panel_ocr",
+        "canvas_pixel_diff",
+        "uia_state_change",
+        "dom_bridge_state",
+        "screen_diff"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "description": "Dataset provenance, e.g. 'GUI-360', 'ScreenParse', 'INTENT_INTERNAL_ANNOTATION'"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to origin dataset, paper, or documentation"
+    },
+    "license": {
+      "type": "string",
+      "description": "License tag, e.g. 'MIT', 'Apache-2.0', 'CC-BY-4.0', 'RESEARCH_ONLY'"
+    },
+    "resolution": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer" },
+        "height": { "type": "integer" }
+      }
+    },
+    "dpi": {
+      "type": "string",
+      "description": "Display scaling factor, e.g. '100%', '125%', '150%'"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Annotation or detection ground-truth confidence"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Extended task-specific metadata (OCR tokens, UIA trees, DOM attributes)"
+    }
+  }
+}

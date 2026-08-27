@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ScreenAnnotationSchema",
+  "description": "Dense screen parsing and UI element inventory schema for INTENT grounding verification",
+  "type": "object",
+  "required": [
+    "application",
+    "screen_state",
+    "screenshot",
+    "resolution",
+    "elements"
+  ],
+  "properties": {
+    "application": {
+      "type": "string",
+      "enum": ["canva", "excel", "windows_desktop", "generic_web"]
+    },
+    "screen_state": {
+      "type": "string",
+      "description": "Semantic application state, e.g. 'canvas_image_unselected', 'canvas_image_selected', 'magic_studio_open', 'excel_insert_ribbon_active'"
+    },
+    "screenshot": {
+      "type": "string",
+      "description": "File path to raw image or base64 data"
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Capture timestamp in epoch milliseconds"
+    },
+    "resolution": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer" },
+        "height": { "type": "integer" }
+      }
+    },
+    "dpi_scale": {
+      "type": "number",
+      "default": 1.0
+    },
+    "window_bounds": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "width": { "type": "integer" },
+        "height": { "type": "integer" }
+      }
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "type", "bbox", "click_point", "interactive"],
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "button",
+              "tab",
+              "menu_item",
+              "canvas_object",
+              "input",
+              "dropdown",
+              "checkbox",
+              "radio",
+              "cell",
+              "panel",
+              "toolbar",
+              "dialog",
+              "text_label",
+              "icon",
+              "container"
+            ]
+          },
+          "bbox": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "[x, y, width, height] in physical desktop coordinates"
+          },
+          "click_point": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "[x, y] center / actionable click point"
+          },
+          "interactive": { "type": "boolean" },
+          "enabled": { "type": "boolean", "default": true },
+          "source": {
+            "type": "string",
+            "enum": ["uia", "winrt_ocr", "opencv", "dom_bridge", "human_annotation"]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "attributes": {
+            "type": "object",
+            "description": "Additional element attributes (ARIA role, UIA AutomationId, CSS classes)"
+          }
+        }
+      }
+    }
+  }
+}

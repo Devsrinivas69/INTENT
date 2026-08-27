@@ -1,0 +1,210 @@
+{
+  "application": "excel",
+  "name": "Microsoft Excel UI Ontology",
+  "version": "Office 365 / Windows 11 Fluent UI",
+  "description": "Comprehensive hierarchical ontology and semantic UI registry for the Microsoft Excel desktop application on Windows.",
+  "source_provenance": {
+    "primary": "Microsoft Learn & Excel Support Documentation (https://support.microsoft.com/excel)",
+    "secondary": "Windows UI Automation Accessibility Tree & Microsoft Office GUI Specifications",
+    "verified_date": "2026-08-27",
+    "license": "CC-BY-4.0 / INTENT Knowledge Base"
+  },
+  "layout_regions": [
+    {
+      "id": "quick_access_and_titlebar",
+      "name": "Quick Access Toolbar & Title Bar",
+      "description": "Top bar with AutoSave, Save, Undo, Redo, Workbook Title, Search bar, and Window controls.",
+      "relative_bounds": { "x_pct": 0, "y_pct": 0, "width_pct": 100, "height_pct": 4 }
+    },
+    {
+      "id": "ribbon_tabs_bar",
+      "name": "Ribbon Header Tabs Bar",
+      "description": "Horizontal tabs: File, Home, Insert, Draw, Page Layout, Formulas, Data, Review, View, Automate, Help.",
+      "relative_bounds": { "x_pct": 0, "y_pct": 4, "width_pct": 100, "height_pct": 4 }
+    },
+    {
+      "id": "ribbon_command_band",
+      "name": "Ribbon Lower Command Band",
+      "description": "Grouped command icons (e.g. Tables, Illustrations, Add-ins, Charts, PivotTables, Sparklines, Filters, Links).",
+      "relative_bounds": { "x_pct": 0, "y_pct": 8, "width_pct": 100, "height_pct": 10 }
+    },
+    {
+      "id": "formula_bar_area",
+      "name": "Name Box & Formula Bar",
+      "description": "Name Box on the left (e.g. 'A1'), Insert Function (fx) button, and the expanding text Formula Bar.",
+      "relative_bounds": { "x_pct": 0, "y_pct": 18, "width_pct": 100, "height_pct": 4 }
+    },
+    {
+      "id": "worksheet_grid_viewport",
+      "name": "Worksheet Spreadsheet Grid Area",
+      "description": "Main scrollable cell grid with column headers (A, B, C...) and row numbers (1, 2, 3...).",
+      "relative_bounds": { "x_pct": 0, "y_pct": 22, "width_pct": 100, "height_pct": 74 }
+    },
+    {
+      "id": "sheet_tabs_and_statusbar",
+      "name": "Sheet Tabs & Status Bar",
+      "description": "Bottom bar showing sheet selector (Sheet1, +), Ready state, Macro recorder, Average/Count/Sum stats, Page views, and Zoom slider.",
+      "relative_bounds": { "x_pct": 0, "y_pct": 96, "width_pct": 100, "height_pct": 4 }
+    }
+  ],
+  "controls": [
+    {
+      "id": "excel_cell_range",
+      "canonical_name": "Data Cells Range",
+      "aliases": ["Spreadsheet Grid", "Data Table", "Cell Selection", "Table Data", "Selected Range", "A1 Range"],
+      "element_type": "cell",
+      "parent_region": "worksheet_grid_viewport",
+      "uia_control_type": "UIA_CustomControlTypeId / UIA_DataItemControlTypeId",
+      "prerequisites": ["workbook_open_with_data"],
+      "possible_states": ["unselected", "single_cell_active", "range_highlighted", "editing_mode"],
+      "visual_features": [
+        "Rectangular grid cells containing numeric and text tabular data",
+        "When highlighted: filled with light green/gray overlay and bounded by dark green selection outline with fill-handle square in bottom-right corner"
+      ],
+      "actions": ["click", "drag_select", "type", "double_click"],
+      "expected_result": {
+        "state": "range_highlighted",
+        "ui_changes": [
+          "Name box updates to top-left cell coordinate (e.g. 'A1')",
+          "Quick Analysis icon (lightning bolt) appears at the bottom-right corner of the selection box"
+        ]
+      },
+      "confidence": 0.98
+    },
+    {
+      "id": "excel_insert_tab",
+      "canonical_name": "Insert",
+      "aliases": ["Insert Tab", "Ribbon Insert", "Insert Menu", "Insert Ribbon"],
+      "element_type": "tab",
+      "parent_region": "ribbon_tabs_bar",
+      "uia_control_type": "UIA_TabItemControlTypeId",
+      "keyboard_shortcut": "Alt+N",
+      "prerequisites": ["excel_window_active"],
+      "possible_states": ["inactive_tab", "active_tab"],
+      "visual_features": [
+        "Text tab labeled 'Insert' located between 'Home' and 'Page Layout' / 'Draw' in the top Ribbon tabs row"
+      ],
+      "actions": ["click", "hotkey"],
+      "expected_result": {
+        "state": "insert_ribbon_active",
+        "ui_changes": [
+          "Ribbon lower command band updates to show Insert groups: Tables, Illustrations, Add-ins, Charts, Tours, Sparklines, Filters, Links, Comments, Text, Symbols"
+        ]
+      },
+      "confidence": 0.99
+    },
+    {
+      "id": "excel_recommended_charts",
+      "canonical_name": "Recommended Charts",
+      "aliases": ["Recommended Chart", "Auto Charts", "Chart Recommendations", "Charts Button"],
+      "element_type": "button",
+      "parent_region": "ribbon_command_band",
+      "uia_control_type": "UIA_ButtonControlTypeId",
+      "keyboard_shortcut": "Alt+N+R",
+      "prerequisites": ["insert_ribbon_active", "data_range_selected"],
+      "possible_states": ["enabled", "disabled", "dialog_open"],
+      "visual_features": [
+        "Medium/large ribbon button with chart icon and green checkmark/magnifier with label 'Recommended Charts'",
+        "Located in the 'Charts' ribbon group on the Insert tab"
+      ],
+      "actions": ["click", "hotkey"],
+      "expected_result": {
+        "state": "insert_chart_dialog_open",
+        "ui_changes": [
+          "Modal dialog titled 'Insert Chart' appears on screen with tabs 'Recommended Charts' and 'All Charts'",
+          "Preview thumbnails of Clustered Column, Bar, Line, and Pie charts displayed on the left"
+        ]
+      },
+      "confidence": 0.98
+    },
+    {
+      "id": "excel_column_bar_chart",
+      "canonical_name": "Insert Column or Bar Chart",
+      "aliases": ["Column Chart", "Bar Chart", "2D Column", "Clustered Column", "Insert Bar Chart"],
+      "element_type": "button",
+      "parent_region": "ribbon_command_band",
+      "uia_control_type": "UIA_ButtonControlTypeId",
+      "keyboard_shortcut": "Alt+N+C",
+      "prerequisites": ["insert_ribbon_active"],
+      "possible_states": ["enabled", "dropdown_open"],
+      "visual_features": [
+        "Ribbon button with vertical bar chart icon located directly next to Recommended Charts in the Charts group"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "column_chart_gallery_open",
+        "ui_changes": [
+          "Flyout gallery opens showing 2-D Column (Clustered, Stacked), 3-D Column, 2-D Bar, and 3-D Bar options"
+        ]
+      },
+      "confidence": 0.97
+    },
+    {
+      "id": "excel_chart_object",
+      "canonical_name": "Chart Object",
+      "aliases": ["Chart Area", "Generated Chart", "Chart Canvas", "Excel Graph", "Embedded Chart"],
+      "element_type": "canvas_object",
+      "parent_region": "worksheet_grid_viewport",
+      "uia_control_type": "UIA_PaneControlTypeId / UIA_CustomControlTypeId",
+      "prerequisites": ["chart_created_on_sheet"],
+      "possible_states": ["unselected", "selected_active"],
+      "visual_features": [
+        "Rendered floating graphic object with axes, title, data series bars/lines, and legend",
+        "When selected: surrounded by border with 8 circular handles, and floating quick-buttons appear on top-right: '+' (Chart Elements), paintbrush (Chart Styles), and funnel (Chart Filters)",
+        "Ribbon activates two contextual tabs: 'Chart Design' and 'Format'"
+      ],
+      "actions": ["click", "drag", "resize", "double_click"],
+      "expected_result": {
+        "state": "chart_active_and_verified",
+        "ui_changes": [
+          "Chart Design and Format ribbon tabs become visible in green header highlight"
+        ]
+      },
+      "confidence": 0.98
+    },
+    {
+      "id": "excel_sort_and_filter",
+      "canonical_name": "Sort & Filter",
+      "aliases": ["Sort", "Filter", "AutoFilter", "Sort Ascending", "Sort Descending", "Custom Sort"],
+      "element_type": "button",
+      "parent_region": "ribbon_command_band",
+      "uia_control_type": "UIA_ButtonControlTypeId",
+      "keyboard_shortcut": "Alt+H+S",
+      "prerequisites": ["home_ribbon_or_data_ribbon_active"],
+      "possible_states": ["enabled", "dropdown_open", "filter_active"],
+      "visual_features": [
+        "Funnel icon with A-Z letters in the Editing group of the Home tab (or Sort & Filter group in Data tab)"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "filter_dropdown_active",
+        "ui_changes": [
+          "Dropdown arrows appear on each column header of the selected dataset table"
+        ]
+      },
+      "confidence": 0.96
+    },
+    {
+      "id": "excel_pivottable_button",
+      "canonical_name": "PivotTable",
+      "aliases": ["Insert PivotTable", "Pivot Table", "Create PivotTable"],
+      "element_type": "button",
+      "parent_region": "ribbon_command_band",
+      "uia_control_type": "UIA_ButtonControlTypeId",
+      "keyboard_shortcut": "Alt+N+V",
+      "prerequisites": ["insert_ribbon_active", "data_range_selected"],
+      "possible_states": ["enabled", "dialog_open"],
+      "visual_features": [
+        "Large ribbon button at far left of Insert tab showing spreadsheet table with colored rows and blue header"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "pivottable_dialog_open",
+        "ui_changes": [
+          "Dialog 'PivotTable from table or range' appears asking for destination worksheet"
+        ]
+      },
+      "confidence": 0.97
+    }
+  ]
+}

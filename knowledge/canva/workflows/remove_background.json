@@ -1,0 +1,82 @@
+{
+  "workflow_id": "canva_remove_background",
+  "application": "canva",
+  "name": "Remove Background",
+  "description": "Step-by-step state machine for removing the background from an image on the Canva canvas workspace.",
+  "states": [
+    {
+      "state_id": "STATE_0_INIT",
+      "name": "Canvas Open",
+      "description": "Canva editor active with image placed on canvas artboard",
+      "target": {
+        "id": "canva_canvas_image",
+        "name": "Image on Canvas",
+        "type": "CANVAS_OBJECT",
+        "region": "design_canvas_workspace"
+      },
+      "instruction": "Click on the image or poster on your canvas to select it.",
+      "action": "click",
+      "expected_next_state": "STATE_1_IMAGE_SELECTED",
+      "verification": {
+        "method": "visual_selection_border",
+        "condition": "Purple selection outline (#8B3DFF) or floating context toolbar appears"
+      }
+    },
+    {
+      "state_id": "STATE_1_IMAGE_SELECTED",
+      "name": "Image Selected",
+      "description": "Image is surrounded by selection border, top contextual toolbar is visible",
+      "target": {
+        "id": "canva_edit_photo",
+        "name": "Edit photo",
+        "aliases": ["Edit", "Edit Photo", "Effects"],
+        "type": "BUTTON",
+        "region": "top_contextual_toolbar"
+      },
+      "instruction": "In the top Canva toolbar, click 'Edit photo' (or 'Edit').",
+      "action": "click",
+      "expected_next_state": "STATE_2_MAGIC_STUDIO_OPEN",
+      "verification": {
+        "method": "edit_photo_panel_ocr",
+        "condition": "Left sidebar opens showing Magic Studio / Effects tools"
+      }
+    },
+    {
+      "state_id": "STATE_2_MAGIC_STUDIO_OPEN",
+      "name": "Magic Studio Panel Open",
+      "description": "Left sidebar displays tools including BG Remover, Magic Eraser, and Adjust",
+      "target": {
+        "id": "canva_bg_remover",
+        "name": "BG Remover",
+        "aliases": ["Background Remover", "Magic Studio BG Remover"],
+        "type": "BUTTON",
+        "region": "left_tool_panel"
+      },
+      "instruction": "In the left Edit photo panel, click 'BG Remover'.",
+      "action": "click",
+      "expected_next_state": "STATE_3_REMOVAL_APPLIED",
+      "verification": {
+        "method": "canvas_pixel_diff",
+        "condition": "Canva performs background removal and modifies canvas pixels"
+      }
+    },
+    {
+      "state_id": "STATE_3_REMOVAL_APPLIED",
+      "name": "Background Removed",
+      "description": "Image is now isolated with a transparent background",
+      "target": {
+        "id": "canva_processed_canvas",
+        "name": "Processed Canvas",
+        "type": "CANVAS_OBJECT",
+        "region": "design_canvas_workspace"
+      },
+      "instruction": "Review the canvas to verify the background has been removed.",
+      "action": "observe_and_verify",
+      "expected_next_state": "STATE_COMPLETE",
+      "verification": {
+        "method": "canvas_pixel_diff",
+        "condition": "Subject is cleanly isolated on canvas"
+      }
+    }
+  ]
+}

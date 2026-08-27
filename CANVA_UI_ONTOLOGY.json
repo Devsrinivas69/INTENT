@@ -1,0 +1,231 @@
+{
+  "application": "canva",
+  "name": "Canva UI Ontology",
+  "version": "2026.08",
+  "description": "Comprehensive hierarchical ontology and semantic UI registry for the Canva Web and Desktop editor interface.",
+  "source_provenance": {
+    "primary": "Official Canva Help Center & Editor Documentation (https://www.canva.com/help/)",
+    "secondary": "Canva Magic Studio Design Guides & DOM Bridge telemetry",
+    "verified_date": "2026-08-27",
+    "license": "CC-BY-4.0 / INTENT Knowledge Base"
+  },
+  "layout_regions": [
+    {
+      "id": "global_navigation_bar",
+      "name": "Top Global Navigation Bar",
+      "description": "Top bar containing Home, File, Resize & Magic Switch, Undo/Redo, Title, Share, and Download.",
+      "relative_bounds": { "x_pct": 0, "y_pct": 0, "width_pct": 100, "height_pct": 6 },
+      "z_index": 10
+    },
+    {
+      "id": "left_primary_sidebar",
+      "name": "Left Primary Tool Navigation",
+      "description": "Vertical icon strip on the far left: Design/Templates, Elements, Text, Brand, Uploads, Draw, Projects, Apps.",
+      "relative_bounds": { "x_pct": 0, "y_pct": 6, "width_pct": 6, "height_pct": 94 },
+      "z_index": 5
+    },
+    {
+      "id": "left_tool_panel",
+      "name": "Left Expanding Tool Panel / Magic Studio",
+      "description": "Flyout sidebar opened when clicking a tool on the left or contextual tools like 'Edit photo' or 'Animate'.",
+      "relative_bounds": { "x_pct": 6, "y_pct": 6, "width_pct": 28, "height_pct": 94 },
+      "z_index": 6
+    },
+    {
+      "id": "top_contextual_toolbar",
+      "name": "Contextual Floating Editor Toolbar",
+      "description": "Horizontal bar floating directly above the canvas or docked below the header, showing tools relevant to the selected element (e.g. Edit photo, BG Remover, Eraser, Crop, Flip, Animate, Position, Transparency).",
+      "relative_bounds": { "x_pct": 6, "y_pct": 6, "width_pct": 94, "height_pct": 6 },
+      "z_index": 8
+    },
+    {
+      "id": "design_canvas_workspace",
+      "name": "Central Design Canvas Workspace",
+      "description": "The central interactive viewport displaying the design pages, artboards, and user assets.",
+      "relative_bounds": { "x_pct": 6, "y_pct": 12, "width_pct": 94, "height_pct": 82 },
+      "z_index": 1
+    },
+    {
+      "id": "bottom_editor_bar",
+      "name": "Bottom Editor Controls Bar",
+      "description": "Footer bar containing Notes, Timer, Page Thumbnails, Zoom Slider, Grid View, and Fullscreen toggle.",
+      "relative_bounds": { "x_pct": 0, "y_pct": 94, "width_pct": 100, "height_pct": 6 },
+      "z_index": 9
+    }
+  ],
+  "controls": [
+    {
+      "id": "canva_canvas_image",
+      "canonical_name": "Image on Canvas",
+      "aliases": ["Canvas Image", "Photo on Canvas", "Uploaded Image", "Poster Image", "Central Graphic", "Graphic Object"],
+      "element_type": "canvas_object",
+      "parent_region": "design_canvas_workspace",
+      "prerequisites": ["canvas_open_with_assets"],
+      "possible_states": ["unselected", "selected", "locked", "cropping", "grouped"],
+      "visual_features": [
+        "Photographic or vector graphic placed on white/colored artboard",
+        "When selected: bounded by a bright purple outline (#8B3DFF / #7D2AE8) with 8 corner/edge resize handles and floating quick-action pill"
+      ],
+      "actions": ["click", "double_click", "drag", "resize"],
+      "expected_result": {
+        "state": "image_selected",
+        "ui_changes": [
+          "Purple selection box appears around object",
+          "Top contextual toolbar displays 'Edit photo' (or 'Edit'), 'BG Remover', 'Crop', 'Flip', 'Animate', 'Position'"
+        ]
+      },
+      "confidence": 0.98
+    },
+    {
+      "id": "canva_edit_photo",
+      "canonical_name": "Edit photo",
+      "aliases": ["Edit", "Edit Photo", "Edit Image", "Effects", "Magic Studio", "Photo Editor"],
+      "element_type": "button",
+      "parent_region": "top_contextual_toolbar",
+      "prerequisites": ["image_selected"],
+      "possible_states": ["visible", "active", "panel_open"],
+      "visual_features": [
+        "Pill button with text 'Edit photo' or 'Edit'",
+        "Located at the far left of the contextual toolbar directly above the canvas workspace"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "magic_studio_panel_open",
+        "ui_changes": [
+          "Left sidebar expands showing 'Magic Studio' / 'Effects' tab",
+          "Tools visible: 'BG Remover', 'Magic Eraser', 'Magic Edit', 'Magic Grab', 'Adjust', 'Filters', 'Effects', 'Mockups'"
+        ]
+      },
+      "confidence": 0.98
+    },
+    {
+      "id": "canva_bg_remover",
+      "canonical_name": "BG Remover",
+      "aliases": ["Background Remover", "Remove Background", "Magic Studio BG Remover", "Magic Background Remover", "Background Erase"],
+      "element_type": "button",
+      "parent_region": "left_tool_panel",
+      "alternative_parent_region": "top_contextual_toolbar",
+      "prerequisites": ["image_selected", "magic_studio_panel_open_or_toolbar_shortcut"],
+      "possible_states": ["idle", "processing", "applied"],
+      "visual_features": [
+        "Square tool card with beach-ball icon or cutout portrait icon",
+        "Label 'BG Remover' with small gold Pro crown icon in top-right corner of the button card"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "background_removal_processing_and_complete",
+        "ui_changes": [
+          "Canva shows progress animation/spinner on canvas asset",
+          "Subject on canvas becomes isolated with transparent background",
+          "Undo button activates in top global navigation bar"
+        ]
+      },
+      "confidence": 0.98
+    },
+    {
+      "id": "canva_animate_button",
+      "canonical_name": "Animate",
+      "aliases": ["Add Animation", "Animation", "Page Animation", "Element Animation", "Photo Animation"],
+      "element_type": "button",
+      "parent_region": "top_contextual_toolbar",
+      "prerequisites": ["canvas_object_selected"],
+      "possible_states": ["idle", "animation_applied"],
+      "visual_features": [
+        "Button with sparkle / moving squares icon and label 'Animate' (or name of currently applied animation, e.g. 'Fade', 'Pan')",
+        "Located in top contextual toolbar"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "animation_panel_open",
+        "ui_changes": [
+          "Left sidebar expands displaying Animation styles tab ('Basic', 'Scale', 'Exaggerate', 'Motion Effects')",
+          "Styles displayed: 'Fade', 'Pan', 'Rise', 'Pop', 'Wipe', 'Breathe', 'Baseline', 'Drift'"
+        ]
+      },
+      "confidence": 0.97
+    },
+    {
+      "id": "canva_animation_style_fade",
+      "canonical_name": "Fade",
+      "aliases": ["Fade Animation", "Fade Style", "Fade In"],
+      "element_type": "button",
+      "parent_region": "left_tool_panel",
+      "prerequisites": ["animation_panel_open"],
+      "possible_states": ["idle", "selected_active"],
+      "visual_features": [
+        "Square thumbnail icon illustrating gradual opacity fade with label 'Fade'"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "fade_animation_applied",
+        "ui_changes": [
+          "Fade button highlighted with purple border/fill in animation panel",
+          "Animation controls (Speed, Direction) appear below style grid",
+          "Toolbar button label changes to 'Fade'"
+        ]
+      },
+      "confidence": 0.96
+    },
+    {
+      "id": "canva_position_button",
+      "canonical_name": "Position",
+      "aliases": ["Position & Layers", "Arrange", "Layers", "Align"],
+      "element_type": "button",
+      "parent_region": "top_contextual_toolbar",
+      "prerequisites": ["canvas_object_selected"],
+      "possible_states": ["idle", "panel_open"],
+      "visual_features": [
+        "Button labeled 'Position' in top contextual toolbar"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "position_panel_open",
+        "ui_changes": [
+          "Left sidebar opens showing 'Arrange' and 'Layers' tabs",
+          "Alignment options (Forward, Backward, To front, To back, Align to page) displayed"
+        ]
+      },
+      "confidence": 0.95
+    },
+    {
+      "id": "canva_share_button",
+      "canonical_name": "Share",
+      "aliases": ["Export", "Publish", "Download Menu", "Share Design"],
+      "element_type": "button",
+      "parent_region": "global_navigation_bar",
+      "prerequisites": ["design_open"],
+      "possible_states": ["idle", "dropdown_open"],
+      "visual_features": [
+        "Primary action button on the top-right of the screen, dark or purple fill with label 'Share'"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "share_menu_open",
+        "ui_changes": [
+          "Dropdown modal opens showing collaboration links, Download, Template link, Social media, and Print"
+        ]
+      },
+      "confidence": 0.97
+    },
+    {
+      "id": "canva_download_button",
+      "canonical_name": "Download",
+      "aliases": ["Download file", "Save image", "Export file"],
+      "element_type": "button",
+      "parent_region": "global_navigation_bar",
+      "prerequisites": ["share_menu_open"],
+      "possible_states": ["idle", "dialog_open"],
+      "visual_features": [
+        "Option inside Share menu with tray-arrow icon and text 'Download'"
+      ],
+      "actions": ["click"],
+      "expected_result": {
+        "state": "download_dialog_open",
+        "ui_changes": [
+          "Download configuration panel displays file type selector (PNG, JPG, PDF, MP4), size slider, and purple Download button"
+        ]
+      },
+      "confidence": 0.96
+    }
+  ]
+}

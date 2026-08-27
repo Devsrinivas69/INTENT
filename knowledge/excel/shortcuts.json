@@ -1,0 +1,16 @@
+{
+  "application": "excel",
+  "keyboard_shortcuts": [
+    { "action": "Insert Tab", "key": "Alt+N", "scope": "global" },
+    { "action": "Home Tab", "key": "Alt+H", "scope": "global" },
+    { "action": "Recommended Charts", "key": "Alt+N+R", "scope": "insert_ribbon" },
+    { "action": "Insert Column Chart", "key": "Alt+N+C", "scope": "insert_ribbon" },
+    { "action": "Create Default Chart (F11)", "key": "F11", "scope": "data_selected" },
+    { "action": "Create Embedded Chart", "key": "Alt+F1", "scope": "data_selected" },
+    { "action": "Sort & Filter", "key": "Alt+H+S", "scope": "home_ribbon" },
+    { "action": "Toggle AutoFilter", "key": "Ctrl+Shift+L", "scope": "table_range" },
+    { "action": "Create Table", "key": "Ctrl+T", "scope": "data_selected" },
+    { "action": "Quick Analysis", "key": "Ctrl+Q", "scope": "data_selected" },
+    { "action": "Format Cells Dialog", "key": "Ctrl+1", "scope": "cells_selected" }
+  ]
+}

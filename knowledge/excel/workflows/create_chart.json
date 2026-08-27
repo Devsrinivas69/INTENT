@@ -1,0 +1,82 @@
+{
+  "workflow_id": "excel_create_chart",
+  "application": "excel",
+  "name": "Create Basic Chart",
+  "description": "Step-by-step state machine for creating a chart from tabular data in Microsoft Excel.",
+  "states": [
+    {
+      "state_id": "STATE_0_INIT",
+      "name": "Spreadsheet Active",
+      "description": "Excel window active with numeric and label data entered in sheet cells",
+      "target": {
+        "id": "excel_cell_range",
+        "name": "Data Cells Range",
+        "type": "CELL",
+        "region": "worksheet_grid_viewport"
+      },
+      "instruction": "Select the data cells you want to chart by dragging across them.",
+      "action": "drag_select",
+      "expected_next_state": "STATE_1_RANGE_SELECTED",
+      "verification": {
+        "method": "uia_state_change",
+        "condition": "Multiple cell selection active or Quick Analysis button visible"
+      }
+    },
+    {
+      "state_id": "STATE_1_RANGE_SELECTED",
+      "name": "Data Range Selected",
+      "description": "Cells highlighted, ready for ribbon chart insertion",
+      "target": {
+        "id": "excel_insert_tab",
+        "name": "Insert",
+        "aliases": ["Insert Tab", "Ribbon Insert"],
+        "type": "TAB",
+        "region": "ribbon_tabs_bar"
+      },
+      "instruction": "Click the 'Insert' tab in the top Excel ribbon.",
+      "action": "click",
+      "expected_next_state": "STATE_2_INSERT_RIBBON_ACTIVE",
+      "verification": {
+        "method": "uia_state_change",
+        "condition": "Insert ribbon tab becomes active and command band updates"
+      }
+    },
+    {
+      "state_id": "STATE_2_INSERT_RIBBON_ACTIVE",
+      "name": "Insert Ribbon Active",
+      "description": "Charts command group visible on the ribbon",
+      "target": {
+        "id": "excel_recommended_charts",
+        "name": "Recommended Charts",
+        "aliases": ["Recommended Chart", "Charts Button", "Insert Column or Bar Chart"],
+        "type": "BUTTON",
+        "region": "ribbon_command_band"
+      },
+      "instruction": "Click 'Recommended Charts' (or choose a column chart icon).",
+      "action": "click",
+      "expected_next_state": "STATE_3_CHART_DIALOG_OR_INSERTED",
+      "verification": {
+        "method": "uia_state_change",
+        "condition": "Insert Chart dialog opens or chart object is placed on sheet"
+      }
+    },
+    {
+      "state_id": "STATE_3_CHART_DIALOG_OR_INSERTED",
+      "name": "Chart Inserted",
+      "description": "Chart canvas object rendered on the active worksheet",
+      "target": {
+        "id": "excel_chart_object",
+        "name": "Chart Area",
+        "type": "CANVAS_OBJECT",
+        "region": "worksheet_grid_viewport"
+      },
+      "instruction": "Your chart is created! Click to select or customize it.",
+      "action": "observe_and_verify",
+      "expected_next_state": "STATE_COMPLETE",
+      "verification": {
+        "method": "uia_state_change",
+        "condition": "Chart Design / Format contextual tabs visible"
+      }
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "application": "excel",
+  "aliases": {
+    "data_cells": [
+      "Data Cells Range",
+      "Data Cells",
+      "Spreadsheet Grid",
+      "Cell Selection",
+      "Data Table",
+      "Table Data",
+      "Selected Range",
+      "A1:B5",
+      "Selected Cells"
+    ],
+    "insert_tab": [
+      "Insert",
+      "Insert Tab",
+      "Insert Ribbon",
+      "Ribbon Insert",
+      "Insert Menu",
+      "Insert Header"
+    ],
+    "recommended_charts": [
+      "Recommended Charts",
+      "Recommended Chart",
+      "Auto Charts",
+      "Chart Recommendations",
+      "Charts Button",
+      "Insert Recommended Chart"
+    ],
+    "column_chart": [
+      "Insert Column or Bar Chart",
+      "Column Chart",
+      "Bar Chart",
+      "Clustered Column",
+      "2D Column",
+      "2-D Column",
+      "Insert Bar Chart"
+    ],
+    "chart_object": [
+      "Chart Object",
+      "Chart Area",
+      "Generated Chart",
+      "Excel Graph",
+      "Chart Canvas",
+      "Embedded Chart",
+      "Chart1"
+    ],
+    "home_tab": [
+      "Home",
+      "Home Tab",
+      "Ribbon Home"
+    ],
+    "data_tab": [
+      "Data",
+      "Data Tab",
+      "Ribbon Data"
+    ],
+    "sort_and_filter": [
+      "Sort & Filter",
+      "Sort and Filter",
+      "AutoFilter",
+      "Filter",
+      "Sort Ascending",
+      "Sort Descending"
+    ],
+    "pivottable": [
+      "PivotTable",
+      "Insert PivotTable",
+      "Pivot Table",
+      "Create PivotTable"
+    ]
+  }
+}
