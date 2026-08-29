@@ -72,16 +72,20 @@ export function TargetHighlight({ target, visible, isDemoMode }: Props) {
 
           {/* Corner accents */}
           {[
-            { top: -1, left: -1, rotate: 0 },
-            { top: -1, right: -1, rotate: 90 },
-            { bottom: -1, right: -1, rotate: 180 },
-            { bottom: -1, left: -1, rotate: 270 },
+            { top: -1, left: -1, rotate: '0deg' },
+            { top: -1, right: -1, rotate: '90deg' },
+            { bottom: -1, right: -1, rotate: '180deg' },
+            { bottom: -1, left: -1, rotate: '270deg' },
           ].map((pos, i) => (
             <div
               key={i}
               className="absolute"
               style={{
-                ...pos,
+                top: pos.top,
+                bottom: pos.bottom,
+                left: pos.left,
+                right: pos.right,
+                transform: `rotate(${pos.rotate})`,
                 width: 12,
                 height: 12,
                 borderTop: i < 2 ? `2px solid ${accentColor}` : 'none',
