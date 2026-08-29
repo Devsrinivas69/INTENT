@@ -62,10 +62,23 @@ export class ScreenUnderstandingEngine {
         this.lastWindowInfo = result as WindowInfo
         return this.lastWindowInfo
       }
+
+      // Fallback: If we have a cached window for this app, attempt to restore it to foreground
+      if (this.lastWindowInfo && this.lastWindowInfo.app === application && this.lastWindowInfo.hwnd) {
+        console.log('[SUE] Application lost focus or minimized. Restoring cached HWND:', this.lastWindowInfo.hwnd)
+        await this.bringToForeground(this.lastWindowInfo.hwnd)
+        const retry = await api.getWindowInfo(application)
+        if (retry?.found) {
+          this.lastWindowInfo = retry as WindowInfo
+          return this.lastWindowInfo
+        }
+        return this.lastWindowInfo
+      }
+
       return null
     } catch (err) {
       console.warn('[SUE] getWindowInfo error:', err)
-      return null
+      return this.lastWindowInfo
     }
   }
 

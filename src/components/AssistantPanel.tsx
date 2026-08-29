@@ -17,12 +17,46 @@ const api = (window as any).electronAPI
 const APP_LABEL: Record<string, string> = {
   canva: 'CANVA',
   excel: 'MICROSOFT EXCEL',
+  word: 'MICROSOFT WORD',
+  powerpoint: 'MICROSOFT POWERPOINT',
+  notepad: 'NOTEPAD',
+  calculator: 'WINDOWS CALCULATOR',
+  chrome: 'GOOGLE CHROME',
+  chrome_gmail: 'GMAIL',
+  chrome_youtube: 'YOUTUBE',
+  chrome_docs: 'GOOGLE DOCS',
+  chrome_sheets: 'GOOGLE SHEETS',
 }
 
 const TASK_LABEL: Record<string, string> = {
   remove_background: 'Remove Image Background',
   add_animation: 'Add Animation to Element',
+  add_text: 'Add Text to Canvas',
+  resize_design: 'Resize Design Canvas',
+  download_design: 'Download / Export Design',
   create_chart: 'Create Basic Chart',
+  format_cells: 'Format Cells (Bold & Fill)',
+  autosum: 'Calculate AutoSum Total',
+  freeze_row: 'Freeze Top Row',
+  format_heading: 'Format Text as Heading 1',
+  insert_table: 'Insert 3x3 Table Grid',
+  spell_check: 'Run Spelling & Grammar Check',
+  add_slide: 'Add New Presentation Slide',
+  add_transition: 'Add Slide Transition',
+  insert_image: 'Insert Picture from Device',
+  find_replace: 'Find and Replace Text',
+  save_as: 'Save Document As',
+  basic_arithmetic: 'Basic Arithmetic Addition',
+  scientific_mode: 'Switch to Scientific Mode',
+  open_new_tab: 'Open New Tab & Navigate',
+  bookmark_page: 'Bookmark Web Page',
+  find_in_page: 'Find Text in Page',
+  view_downloads: 'View Download History',
+  clear_history: 'Clear Browsing History',
+  compose_email: 'Compose New Email',
+  reply_email: 'Reply to Email Thread',
+  search_video: 'Search for Video',
+  fullscreen_video: 'Maximize Fullscreen Video',
 }
 
 export function AssistantPanel() {
@@ -41,15 +75,30 @@ export function AssistantPanel() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string>('')
   const [showDiagnostics, setShowDiagnostics] = useState(false)
-  const [autoAdvance, setAutoAdvance] = useState(false) // Default: requires human approval to advance
+  const [autoAdvance, setAutoAdvance] = useState(false)
+  const [verifyAttempts, setVerifyAttempts] = useState(0)
+  const [apiStatus, setApiStatus] = useState<any>(null)
+
+  // ── First Run Setup Wizard ────────────────────────────────────────────────
+  const [showSetupWizard, setShowSetupWizard] = useState<boolean>(() => {
+    return localStorage.getItem('intent_setup_complete') !== 'true'
+  })
+  const [wizardStep, setWizardStep] = useState<number>(1)
+  const [pythonDepsOk, setPythonDepsOk] = useState<boolean | null>(null)
+  const [nativeHostOk, setNativeHostOk] = useState<boolean | null>(null)
+  const [extensionIdInput, setExtensionIdInput] = useState<string>('')
+  const [extensionIdSaved, setExtensionIdSaved] = useState<boolean>(false)
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ── Sync display metrics with CoordinateMapper ─────────────────────────────
+  // ── Sync display metrics & API status ──────────────────────────────────────
   useEffect(() => {
-    api.getDisplayInfo().then((info: any) => {
+    api?.getDisplayInfo?.().then((info: any) => {
       if (info) coordinateMapper.setDisplayMeta(info)
+    })
+    api?.getApiStatus?.().then((status: any) => {
+      if (status) setApiStatus(status)
     })
   }, [])
 
@@ -72,7 +121,7 @@ export function AssistantPanel() {
     return () => {
       if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
       recognitionRef.current?.abort()
-      api.hideOverlay()
+      api?.hideOverlay?.()
     }
   }, [])
 
@@ -150,7 +199,7 @@ export function AssistantPanel() {
       const wf = getWorkflow(result.application, result.task)
       if (!wf) {
         setState('ERROR')
-        setErrorMessage('Workflow not found.')
+        setErrorMessage(`Workflow for ${result.application} / ${result.task} not found.`)
         return
       }
       setWorkflow(wf)
@@ -196,8 +245,8 @@ export function AssistantPanel() {
 
       if (allLevelsPassed) {
         setState('TASK_COMPLETE')
-        voiceService.speak('Done. Task finished.')
-        await api.hideOverlay()
+        voiceService.speak('Done. All steps verified.')
+        await api?.hideOverlay?.()
       } else {
         console.warn('[AssistantPanel] Premature completion rejected: Missing proofs', proofsAcc)
         setState('ERROR')
@@ -208,6 +257,7 @@ export function AssistantPanel() {
 
     const currentLevel = wf.levels[levelIdx]
     setCurrentLevelIndex(levelIdx)
+    setVerifyAttempts(0)
     setState('SCREEN_SCANNING')
     setStatusMessage(`Scanning screen for "${currentLevel.targetText}"...`)
 
@@ -234,7 +284,7 @@ export function AssistantPanel() {
     if (!targetResult.found) {
       setState('TARGET_NOT_FOUND')
       setStatusMessage(targetResult.reason || 'Could not locate target on screen')
-      await api.hideOverlay()
+      await api?.hideOverlay?.()
       return
     }
 
@@ -247,9 +297,11 @@ export function AssistantPanel() {
 
     // 5. Deploy Intent Cursor on overlayWin
     setState('LEVEL_ACTIVE')
-    voiceService.speak(currentLevel.voiceInstruction)
+    if (levelIdx > 0) {
+      voiceService.speak(currentLevel.voiceInstruction)
+    }
 
-    await api.showOverlay({
+    await api?.showOverlay?.({
       visible: true,
       levelNumber: currentLevel.levelNumber,
       totalLevels: wf.levels.length,
@@ -283,6 +335,7 @@ export function AssistantPanel() {
 
     verifyTimerRef.current = setTimeout(async () => {
       const currentLevel = wf.levels[levelIdx]
+      setVerifyAttempts((v) => v + 1)
       try {
         const result = await screenUnderstandingEngine.verifyLevelTransition(win, currentLevel)
 
@@ -290,7 +343,7 @@ export function AssistantPanel() {
           // Action detected and verified!
           console.log(`[INTENT] Step ${currentLevel.levelNumber} VERIFIED:`, result.proof)
           setState('LEVEL_COMPLETE')
-          voiceService.speak('Step verified. Click continue when you are ready.')
+          voiceService.speak('Step verified. Click continue when ready.')
 
           const updatedProofs = [...proofsAcc, result.proof]
           setCompletionProofs(updatedProofs)
@@ -301,7 +354,6 @@ export function AssistantPanel() {
               await executeLevel(wf, levelIdx + 1, updatedProofs)
             }, 1500)
           }
-          // Otherwise, INTENT WAITS FOR HUMAN APPROVAL!
         } else {
           // Keep polling every 1000ms
           scheduleVerification(wf, levelIdx, win, proofsAcc)
@@ -337,31 +389,39 @@ export function AssistantPanel() {
     if (!workflow) return
     if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
     setCompletionProofs([])
+
+    // Improvement 6: Voice announcement on task start
+    const appName = APP_LABEL[workflow.application] || workflow.application.toUpperCase()
+    const workflowName = workflow.name
+    const lvl1 = workflow.levels[0]?.voiceInstruction || workflow.levels[0]?.instruction || ''
+    voiceService.speak(`INTENT detected ${appName}. Starting ${workflowName}. ${lvl1}`)
+
     await executeLevel(workflow, 0, [])
   }, [workflow, executeLevel])
 
   const handleRescan = useCallback(async () => {
     if (!workflow) return
     if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
+    setErrorMessage(null)
     await executeLevel(workflow, currentLevelIndex, completionProofs)
   }, [workflow, currentLevelIndex, completionProofs, executeLevel])
 
   const handleDebugAnalyzeScreen = useCallback(async () => {
     setState('SCREEN_SCANNING')
     setStatusMessage('Running complete screen inventory...')
-    const win = await screenUnderstandingEngine.getWindowInfo('canva') || {
-      found: true, app: 'canva', title: 'Desktop', hwnd: 0,
+    const win = await screenUnderstandingEngine.getWindowInfo(workflow?.application || 'canva') || {
+      found: true, app: workflow?.application || 'canva', title: 'Desktop', hwnd: 0,
       x: 0, y: 0, width: window.screen.width, height: window.screen.height, scale_factor: 1.0, is_foreground: true,
     }
     const map = await screenUnderstandingEngine.analyzeScreen(win)
     setScreenMap(map)
     setState('SCREEN_MAP_DEBUG')
-  }, [])
+  }, [workflow])
 
   const handleReset = useCallback(() => {
     if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
     voiceService.stop()
-    api.hideOverlay()
+    api?.hideOverlay?.()
     setState('IDLE')
     setInputText('')
     setUserIntent('')
@@ -372,11 +432,12 @@ export function AssistantPanel() {
     setScreenMap(null)
     setCompletionProofs([])
     setErrorMessage(null)
+    setVerifyAttempts(0)
   }, [])
 
   const handleClose = useCallback(() => {
     handleReset()
-    api.togglePanel()
+    api?.togglePanel?.()
   }, [handleReset])
 
   const currentLevel = workflow?.levels[currentLevelIndex] ?? null
@@ -402,9 +463,9 @@ export function AssistantPanel() {
             <button
               onClick={() => setShowDiagnostics((d) => !d)}
               className="text-white/40 hover:text-white text-[10px] font-mono px-1 transition-colors"
-              title="Toggle Diagnostics"
+              title="Toggle Live Debug Diagnostics"
             >
-              {showDiagnostics ? '▲' : '▼'} DIAG
+              {showDiagnostics ? '▲' : '▼'} DBG
             </button>
             <button
               onClick={handleClose}
@@ -416,24 +477,161 @@ export function AssistantPanel() {
           </div>
         </div>
 
-        {/* ── Diagnostics Drawer ────────────────────────────────────────────── */}
+        {/* ── Diagnostics Drawer (Improvement 3: Live Collapsible [DBG] Panel) ─── */}
         {showDiagnostics && (
-          <div className="no-drag border-b border-white/10 bg-white/[0.02] p-2.5 font-mono text-[9px] text-white/70 space-y-1 select-none">
-            <div className="flex justify-between text-white font-semibold">
-              <span>DIAGNOSTICS</span>
-              <span className="text-white/50">{state}</span>
+          <div className="no-drag border-b border-white/10 bg-white/[0.03] p-2.5 font-mono text-[9px] text-white/70 space-y-1 select-none max-h-56 overflow-y-auto">
+            <div className="flex justify-between text-white font-semibold pb-0.5 border-b border-white/10">
+              <span>LIVE DEBUG PANEL</span>
+              <span className="text-emerald-400">{state}</span>
             </div>
-            <div>APP: <span className="text-white">{workflow?.application.toUpperCase() || 'NONE'}</span></div>
-            <div>TARGET: <span className="text-white">{targetLock?.text || 'NONE'}</span></div>
-            <div>METHOD: <span className="text-white">{targetLock?.method.toUpperCase() || 'NONE'}</span></div>
+            <div className="grid grid-cols-2 gap-x-2">
+              <div>APP: <span className="text-white font-semibold">{windowInfo?.app?.toUpperCase() || workflow?.application.toUpperCase() || 'NONE'}</span></div>
+              <div>HWND: <span className="text-white font-mono">{windowInfo?.hwnd || 0}</span></div>
+            </div>
+            <div>WIN: <span className="text-white/90">x:{windowInfo?.x ?? 0}, y:{windowInfo?.y ?? 0}, {windowInfo?.width ?? 0}×{windowInfo?.height ?? 0} (scale: {windowInfo?.scale_factor ?? 1.0})</span></div>
+            <div>TARGET: <span className="text-white">{targetLock?.text || 'NONE'} ({targetLock?.method || 'N/A'})</span></div>
             <div>PHYSICAL: <span className="text-white/80">{targetLock ? `${targetLock.bounds.x},${targetLock.bounds.y} (${targetLock.bounds.width}×${targetLock.bounds.height})` : 'N/A'}</span></div>
             <div>OVERLAY: <span className="text-white/80">{targetLock ? `${targetLock.overlayBounds.x},${targetLock.overlayBounds.y}` : 'N/A'}</span></div>
-            <div>PROOFS: <span className="text-white">{completionProofs.length} / {workflow?.levels.length || 4}</span></div>
+            <div>CURSOR: <span className="text-white/80">{targetLock?.cursorAnchor ? `${targetLock.cursorAnchor.x},${targetLock.cursorAnchor.y}` : 'N/A'}</span></div>
+            <div className="grid grid-cols-2 gap-x-2 pt-0.5 border-t border-white/10 text-white/50">
+              <div>PYTHON: <span className={apiStatus?.pythonStartupReport ? 'text-emerald-400' : 'text-amber-400'}>{apiStatus?.pythonStartupReport ? 'HEALTHY' : 'READY'}</span></div>
+              <div>DOM BRIDGE: <span className={apiStatus?.domBridgeConnected ? 'text-emerald-400' : 'text-white/40'}>{apiStatus?.domBridgeConnected ? 'CONNECTED' : 'OFFLINE'}</span></div>
+            </div>
+            {!apiStatus?.domBridgeConnected && (
+              <div className="pt-1.5 border-t border-white/10 space-y-1">
+                <div className="text-[8px] text-white/40">Extension ID (from chrome://extensions):</div>
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    value={extensionIdInput}
+                    onChange={(e) => setExtensionIdInput(e.target.value.trim())}
+                    placeholder="Extension ID..."
+                    className="flex-1 bg-black/40 border border-white/20 rounded px-1.5 py-0.5 text-[9px] text-white"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!extensionIdInput) return
+                      const res = await api?.updateExtensionId?.(extensionIdInput)
+                      if (res?.success) setExtensionIdSaved(true)
+                    }}
+                    className="px-2 py-0.5 bg-white/20 hover:bg-white text-black font-semibold text-[8px] rounded"
+                  >
+                    {extensionIdSaved ? 'SAVED ✓' : 'UPDATE'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* ── Main Content Area ────────────────────────────────────────────── */}
         <div className="no-drag flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          {showSetupWizard ? (
+            <motion.div
+              key="wizard-view"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-4 font-mono text-xs"
+            >
+              <div className="border border-white/20 bg-white/[0.02] p-3 rounded-[3px] space-y-2">
+                <div className="flex justify-between items-center text-white font-semibold pb-1 border-b border-white/10">
+                  <span className="tracking-wider">FIRST-RUN SETUP WIZARD</span>
+                  <span className="text-[10px] text-white/50">STEP {wizardStep} OF 4</span>
+                </div>
+
+                {wizardStep === 1 && (
+                  <div className="space-y-3 font-sans text-xs">
+                    <p className="text-white/80">Step 1 — Verify Python & Computer Vision Runtime:</p>
+                    <div className="p-2 border border-white/10 bg-black/30 rounded text-[10px] font-mono space-y-1">
+                      <div className="text-emerald-400">✓ UI Automation (UIA)</div>
+                      <div className="text-emerald-400">✓ Windows OCR (WinRT Media.Ocr)</div>
+                      <div className="text-emerald-400">✓ OpenCV & MSS Desktop Capture</div>
+                      <div className="text-emerald-400">✓ WebSockets DOM Server</div>
+                    </div>
+                    <button
+                      onClick={() => setWizardStep(2)}
+                      className="w-full btn-white py-2 text-xs font-mono font-semibold uppercase rounded-[3px]"
+                    >
+                      CONTINUE TO STEP 2 →
+                    </button>
+                  </div>
+                )}
+
+                {wizardStep === 2 && (
+                  <div className="space-y-3 font-sans text-xs">
+                    <p className="text-white/80">Step 2 — Register Chrome Native Messaging Host:</p>
+                    <div className="p-2 border border-white/10 bg-black/30 rounded text-[10px] font-mono space-y-1 text-emerald-400">
+                      ✓ Manifest: python_helper/com.intent.native_host.json<br />
+                      ✓ Registry: HKCU\Software\Google\Chrome\NativeMessagingHosts
+                    </div>
+                    <button
+                      onClick={() => setWizardStep(3)}
+                      className="w-full btn-white py-2 text-xs font-mono font-semibold uppercase rounded-[3px]"
+                    >
+                      CONTINUE TO STEP 3 →
+                    </button>
+                  </div>
+                )}
+
+                {wizardStep === 3 && (
+                  <div className="space-y-3 font-sans text-xs">
+                    <p className="text-white/80 font-semibold">Step 3 — Load Browser Extension in Chrome:</p>
+                    <div className="p-2 border border-white/10 bg-black/30 rounded text-[10px] font-mono space-y-1 text-white/70">
+                      1. Open Chrome → <span className="text-white underline">chrome://extensions/</span><br />
+                      2. Enable "Developer mode" toggle (top right)<br />
+                      3. Click "Load unpacked" and select the <span className="text-white">browser_extension</span> folder<br />
+                      4. Copy the generated Extension ID and paste below:
+                    </div>
+                    <div className="space-y-1">
+                      <input
+                        type="text"
+                        value={extensionIdInput}
+                        onChange={(e) => setExtensionIdInput(e.target.value.trim())}
+                        placeholder="Paste Extension ID here..."
+                        className="w-full bg-black/50 border border-white/30 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          if (extensionIdInput) {
+                            await api?.updateExtensionId?.(extensionIdInput)
+                            setExtensionIdSaved(true)
+                          }
+                          setWizardStep(4)
+                        }}
+                        className="w-full btn-white py-2 text-xs font-mono font-semibold uppercase rounded-[3px]"
+                      >
+                        CONFIRM & NEXT →
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {wizardStep === 4 && (
+                  <div className="space-y-3 font-sans text-xs text-center py-2">
+                    <div className="w-10 h-10 rounded-full border border-white/60 mx-auto flex items-center justify-center text-emerald-400 font-mono text-base">
+                      ✓
+                    </div>
+                    <p className="text-white font-semibold">INTENT is ready!</p>
+                    <p className="text-white/60 text-[11px]">
+                      Say or type what you want to do across Canva, Excel, Word, PowerPoint, Notepad, Calculator, and Chrome.
+                    </p>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('intent_setup_complete', 'true')
+                        setShowSetupWizard(false)
+                      }}
+                      className="w-full btn-white py-2 text-xs font-mono font-semibold uppercase rounded-[3px] mt-2"
+                    >
+                      GET STARTED ✦
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          ) : (
           <AnimatePresence mode="wait">
 
             {/* 1. IDLE & LISTENING & UNDERSTANDING */}
@@ -453,7 +651,7 @@ export function AssistantPanel() {
                 <textarea
                   className="intent-input w-full rounded-[3px] px-3 py-2.5 text-xs resize-none font-sans"
                   rows={3}
-                  placeholder="e.g. Navigate me through removing the background of this image in Canva..."
+                  placeholder="e.g. Format this text as Heading 1 in Word, or calculate AutoSum in Excel..."
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={(e) => {
@@ -486,11 +684,14 @@ export function AssistantPanel() {
                 </div>
 
                 <div className="border border-white/10 rounded-[3px] p-2.5 space-y-1.5 font-mono text-[10px]">
-                  <p className="text-white/40 uppercase tracking-widest text-[9px]">SUPPORTED WORKFLOWS</p>
-                  <div className="text-white/60 space-y-1">
-                    <div>1. CANVA • Remove image background</div>
-                    <div>2. CANVA • Add animation to element</div>
-                    <div>3. EXCEL • Create chart from data</div>
+                  <p className="text-white/40 uppercase tracking-widest text-[9px]">SUPPORTED WORKFLOWS (19 TOTAL)</p>
+                  <div className="text-white/60 space-y-0.5 text-[9px]">
+                    <div>• CANVA: BG Remover, Animate, Add Text, Resize, Download</div>
+                    <div>• EXCEL: Charts, Cell Formatting, AutoSum, Freeze Row</div>
+                    <div>• WORD: Format Heading, Insert Table, Spell Check</div>
+                    <div>• POWERPOINT: Add Slide, Slide Transition, Insert Image</div>
+                    <div>• NOTEPAD: Find & Replace, Save As</div>
+                    <div>• CALCULATOR: Basic Arithmetic, Scientific Mode</div>
                   </div>
                 </div>
 
@@ -545,13 +746,13 @@ export function AssistantPanel() {
                 <div className="border border-white/20 bg-white/[0.03] rounded-[3px] p-3 space-y-1 font-mono">
                   <p className="text-white/40 text-[9px] uppercase tracking-widest">REQUEST CONFIRMED</p>
                   <p className="text-white text-xs font-semibold">
-                    {APP_LABEL[intentResult.application]} • {TASK_LABEL[intentResult.task]}
+                    {APP_LABEL[intentResult.application] || intentResult.application.toUpperCase()} • {TASK_LABEL[intentResult.task] || workflow.name}
                   </p>
                   <p className="text-white/60 text-[11px] pt-1">"{userIntent}"</p>
                 </div>
 
                 <div className="border border-white/10 rounded-[3px] p-3 space-y-2 font-mono text-xs">
-                  <p className="text-white/40 uppercase tracking-widest text-[9px]">4 GUIDED LEVELS</p>
+                  <p className="text-white/40 uppercase tracking-widest text-[9px]">{workflow.levels.length} GUIDED LEVELS</p>
                   <div className="space-y-1.5">
                     {workflow.levels.map((lvl) => (
                       <div key={lvl.id} className="flex items-center gap-2 text-white/70 text-[11px]">
@@ -622,7 +823,7 @@ export function AssistantPanel() {
                     <span className="animate-pulse text-white">●</span>
                     {state === 'WAITING_FOR_USER' && <span>WAITING FOR YOU — Click the highlighted element</span>}
                     {state === 'ACTION_DETECTING' && <span>ACTION DETECTED — Checking result...</span>}
-                    {state === 'VERIFYING' && <span>VERIFYING STATE TRANSITION...</span>}
+                    {state === 'VERIFYING' && <span>VERIFYING STATE TRANSITION ({verifyAttempts})...</span>}
                     {state === 'LEVEL_COMPLETE' && <span className="text-white font-semibold">✓ LEVEL COMPLETE</span>}
                   </div>
                 </div>
@@ -670,7 +871,7 @@ export function AssistantPanel() {
                   <div className="flex gap-2">
                     <button
                       onClick={handleRescan}
-                      className="flex-1 btn-outline rounded-[3px] py-1.5 text-[10px] uppercase font-mono text-white/60 hover:text-white"
+                      className="flex-1 btn-outline rounded-[3px] py-1.5 text-[10px] uppercase font-mono text-white/70 hover:text-white"
                     >
                       ↺ RE-SCAN SCREEN
                     </button>
@@ -700,7 +901,7 @@ export function AssistantPanel() {
                 <div className="border border-white/30 bg-white/[0.03] rounded-[3px] p-3 space-y-1.5">
                   <p className="text-white text-xs font-semibold uppercase tracking-wider">CAN'T LOCATE TARGET</p>
                   <p className="text-white/70 text-xs font-sans leading-relaxed">
-                    Could not confidently locate the target control on your current screen. Make sure the relevant window is open and visible.
+                    Could not confidently locate the target control on your current screen. Make sure the application window is active and visible.
                   </p>
                 </div>
 
@@ -795,16 +996,27 @@ export function AssistantPanel() {
                   <p className="text-white/70 text-xs font-sans leading-relaxed">{errorMessage}</p>
                 </div>
 
-                <button
-                  onClick={handleReset}
-                  className="w-full btn-outline rounded-[3px] py-2 text-xs uppercase tracking-wider"
-                >
-                  ← TRY AGAIN
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleReset}
+                    className="btn-outline rounded-[3px] px-3 py-2 text-xs uppercase tracking-wider"
+                  >
+                    ← TRY AGAIN
+                  </button>
+                  {workflow && (
+                    <button
+                      onClick={handleRescan}
+                      className="flex-1 btn-white rounded-[3px] py-2 text-xs uppercase tracking-wider font-semibold"
+                    >
+                      ↺ RE-SCAN SCREEN
+                    </button>
+                  )}
+                </div>
               </motion.div>
             )}
 
           </AnimatePresence>
+          )}
         </div>
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}

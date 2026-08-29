@@ -1,27 +1,55 @@
 appId: com.intent.desktop
 productName: INTENT
-copyright: Copyright © 2024 INTENT
+copyright: "Copyright © 2026 Srinivas Reddy"
 
 directories:
   output: release
+  buildResources: build
 
 files:
   - dist/**/*
   - dist-electron/**/*
-  - package.json
+  - python_helper/**/*
+  - knowledge/**/*
+  - src/knowledge/**/*
+  - scripts/install_native_host.py
+  - scripts/update_extension_id.py
+  - browser_extension/**/*
+  - "!node_modules/**/*"
+  - "!**/*.map"
+  - "!**/*.ts"
 
 win:
   target:
     - target: nsis
-      arch:
-        - x64
-  artifactName: INTENT-Setup-${version}.exe
+      arch: [x64]
+  icon: build/icon.ico
+  requestedExecutionLevel: asInvoker
+  signAndEditExecutable: false
+  sign: null
 
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  installerHeaderIcon: public/icon.ico
+  allowElevation: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
   createDesktopShortcut: true
   createStartMenuShortcut: true
+  shortcutName: INTENT
+  runAfterFinish: true
+  include: build/installer.nsh
 
-publish: null
+extraResources:
+  - from: python_helper
+    to: python_helper
+    filter: ["**/*"]
+  - from: knowledge
+    to: knowledge
+    filter: ["**/*"]
+  - from: scripts/install_native_host.py
+    to: scripts/install_native_host.py
+  - from: browser_extension
+    to: browser_extension
+    filter: ["**/*"]

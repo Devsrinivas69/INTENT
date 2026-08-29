@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, screen, desktopCapturer, session } from 'e
 import path, { join } from 'path'
 import { existsSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { spawn, ChildProcess } from 'child_process'
+import { spawn, execFileSync, ChildProcess } from 'child_process'
 import readline from 'readline'
 import dotenv from 'dotenv'
 import { GoogleGenerativeAI } from '@google/generative-ai'
@@ -40,6 +40,7 @@ if (process.env.GEMINI_API_KEY) {
 // ─── Python Automation Helper (Windows UI Automation + OCR + OpenCV) ──────────
 
 let pythonProc: ChildProcess | null = null
+let pythonStartupReport: Record<string, any> | null = null
 let reqId = 0
 const pendingRequests = new Map<number, (res: any) => void>()
 
@@ -55,6 +56,11 @@ function initPythonHelper() {
     rl.on('line', (line) => {
       try {
         const data = JSON.parse(line)
+        if (data.type === 'startup_report') {
+          pythonStartupReport = data
+          console.log('[INTENT] Python helper startup report:', JSON.stringify(data))
+          return
+        }
         if (data.id !== undefined && pendingRequests.has(data.id)) {
           const resolve = pendingRequests.get(data.id)!
           pendingRequests.delete(data.id)
@@ -89,12 +95,26 @@ function sendPythonCommand(cmd: Record<string, any>): Promise<any> {
     pendingRequests.set(id, resolve)
     pythonProc.stdin.write(JSON.stringify({ ...cmd, id }) + '\n')
 
+    const action = cmd.action || 'unknown'
+    const timeoutMap: Record<string, number> = {
+      analyze_screen_full: 20000,
+      analyze_screen: 20000,
+      find_target: 15000,
+      verify_level: 10000,
+      capture_screenshot: 8000,
+      get_window_info: 6000,
+      bring_to_foreground: 6000,
+      ping: 4000,
+    }
+    const timeoutMs = timeoutMap[action] ?? 15000
+
     setTimeout(() => {
       if (pendingRequests.has(id)) {
         pendingRequests.delete(id)
-        resolve({ found: false, error: 'Timeout' })
+        console.warn(`[INTENT] Python timeout: action=${action} after ${timeoutMs}ms`)
+        resolve({ found: false, error: `Python timeout: action=${action} after ${timeoutMs}ms` })
       }
-    }, 6000)
+    }, timeoutMs)
   })
 }
 
@@ -110,9 +130,25 @@ let overlayWin: BrowserWindow | null = null
 // INTENT uses these as a high-confidence source (Tier 2) for Canva element positions.
 
 const DOM_BRIDGE_PORT = 18923
+const NATIVE_HOST_PORT = 18924
 let domBridgeWss: WebSocketServer | null = null
+let nativeHostWss: WebSocketServer | null = null
 let lastDomSnapshot: Record<string, any> | null = null
 let domBridgeConnected = false
+
+function ensureNativeHostInstalled() {
+  try {
+    const scriptPath = join(app.getAppPath(), 'scripts/install_native_host.py')
+    execFileSync('python', [scriptPath], { 
+      timeout: 8000, 
+      windowsHide: true,
+      encoding: 'utf8'
+    })
+    console.log('[INTENT] Native messaging host verified/installed.')
+  } catch (e) {
+    console.warn('[INTENT] Native host install failed (non-critical):', e)
+  }
+}
 
 function initDomBridgeServer() {
   try {
@@ -120,12 +156,12 @@ function initDomBridgeServer() {
 
     domBridgeWss.on('connection', (ws: WebSocket) => {
       domBridgeConnected = true
-      console.log('[INTENT] Browser extension DOM bridge connected')
+      console.log('[INTENT] Browser extension DOM bridge connected on port 18923')
 
       ws.on('message', (raw: Buffer) => {
         try {
           const snapshot = JSON.parse(raw.toString())
-          if (snapshot.type === 'canva_dom_snapshot') {
+          if (snapshot.type === 'canva_dom_snapshot' || snapshot.type === 'DOM_SNAPSHOT') {
             lastDomSnapshot = snapshot
             // Forward to panel renderer
             panelWin?.webContents.send('dom-bridge:snapshot', snapshot)
@@ -137,7 +173,7 @@ function initDomBridgeServer() {
 
       ws.on('close', () => {
         domBridgeConnected = false
-        console.log('[INTENT] Browser extension DOM bridge disconnected')
+        console.log('[INTENT] Browser extension DOM bridge disconnected on port 18923')
       })
 
       // Send immediate snapshot request
@@ -151,6 +187,40 @@ function initDomBridgeServer() {
     console.log(`[INTENT] DOM bridge WebSocket server listening on port ${DOM_BRIDGE_PORT}`)
   } catch (err) {
     console.warn('[INTENT] Could not start DOM bridge server:', err)
+  }
+
+  // Second WebSocket Server on Port 18924 for Native Messaging Host
+  try {
+    nativeHostWss = new WebSocketServer({ port: NATIVE_HOST_PORT, host: '127.0.0.1' })
+
+    nativeHostWss.on('connection', (ws: WebSocket) => {
+      domBridgeConnected = true
+      console.log('[INTENT] Native messaging host connected on port 18924')
+
+      ws.on('message', (raw: Buffer) => {
+        try {
+          const msg = JSON.parse(raw.toString())
+          if (msg.type === 'DOM_SNAPSHOT' || msg.type === 'canva_dom_snapshot') {
+            lastDomSnapshot = msg
+            panelWin?.webContents.send('dom-bridge:snapshot', msg)
+          }
+        } catch (e) {
+          // ignore malformed
+        }
+      })
+
+      ws.on('close', () => {
+        console.log('[INTENT] Native messaging host disconnected on port 18924')
+      })
+    })
+
+    nativeHostWss.on('error', (err: Error) => {
+      console.warn('[INTENT] Native host WebSocket error:', err.message)
+    })
+
+    console.log(`[INTENT] Native host WebSocket server listening on port ${NATIVE_HOST_PORT}`)
+  } catch (err) {
+    console.warn('[INTENT] Could not start native host WebSocket server:', err)
   }
 }
 
@@ -221,14 +291,19 @@ function createPanelWindow() {
 }
 
 function createOverlayWindow() {
-  const display = screen.getPrimaryDisplay()
-  const { width, height } = display.bounds
+  const displays = screen.getAllDisplays()
+  const virtualLeft = Math.min(...displays.map(d => d.bounds.x))
+  const virtualTop = Math.min(...displays.map(d => d.bounds.y))
+  const virtualRight = Math.max(...displays.map(d => d.bounds.x + d.bounds.width))
+  const virtualBottom = Math.max(...displays.map(d => d.bounds.y + d.bounds.height))
+  const totalWidth = virtualRight - virtualLeft
+  const totalHeight = virtualBottom - virtualTop
 
   overlayWin = new BrowserWindow({
-    width,
-    height,
-    x: 0,
-    y: 0,
+    width: totalWidth,
+    height: totalHeight,
+    x: virtualLeft,
+    y: virtualTop,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -252,6 +327,7 @@ function createOverlayWindow() {
 // ─── App Lifecycle ───────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
+  ensureNativeHostInstalled()
   initPythonHelper()
   initDomBridgeServer()
 
@@ -312,11 +388,20 @@ ipcMain.handle('window:hide-overlay', () => {
 ipcMain.handle('screen:get-display-info', () => {
   const primary = screen.getPrimaryDisplay()
   const all = screen.getAllDisplays()
+  const virtualLeft = Math.min(...all.map(d => d.bounds.x))
+  const virtualTop = Math.min(...all.map(d => d.bounds.y))
+  const virtualRight = Math.max(...all.map(d => d.bounds.x + d.bounds.width))
+  const virtualBottom = Math.max(...all.map(d => d.bounds.y + d.bounds.height))
   return {
     // Primary display
     screenWidth: primary.bounds.width,
     screenHeight: primary.bounds.height,
     scaleFactor: primary.scaleFactor,
+    // Virtual desktop bounds
+    virtualLeft,
+    virtualTop,
+    totalWidth: virtualRight - virtualLeft,
+    totalHeight: virtualBottom - virtualTop,
     // Full multi-monitor topology
     displays: all.map(d => ({
       id: d.id,
@@ -423,18 +508,112 @@ ipcMain.handle('intent:capture-screenshot', async (_, params: Record<string, any
 
 function localClassify(text: string) {
   const lower = text.toLowerCase()
-  if (lower.includes('background') || lower.includes('bg') || lower.includes('remove')) {
+
+  // 1. Canva Workflows
+  if (lower.includes('background') || lower.includes('bg remover') || (lower.includes('remove') && !lower.includes('slide'))) {
     return { supported: true, application: 'canva', task: 'remove_background', confidence: 0.95 }
   }
-  if (lower.includes('animat') || lower.includes('motion') || lower.includes('fade')) {
+  if (lower.includes('animat') || lower.includes('motion')) {
     return { supported: true, application: 'canva', task: 'add_animation', confidence: 0.95 }
   }
-  if (lower.includes('chart') || lower.includes('graph') || lower.includes('excel') || lower.includes('data')) {
+  if ((lower.includes('text') || lower.includes('heading')) && (lower.includes('canva') || lower.includes('poster') || lower.includes('design') || (!lower.includes('word') && !lower.includes('doc')))) {
+    return { supported: true, application: 'canva', task: 'add_text', confidence: 0.92 }
+  }
+  if (lower.includes('resize') || lower.includes('magic switch') || lower.includes('dimensions')) {
+    return { supported: true, application: 'canva', task: 'resize_design', confidence: 0.95 }
+  }
+  if (lower.includes('download') || (lower.includes('export') && (lower.includes('canva') || lower.includes('design')))) {
+    return { supported: true, application: 'canva', task: 'download_design', confidence: 0.95 }
+  }
+
+  // 2. Excel Workflows
+  if (lower.includes('chart') || lower.includes('graph') || (lower.includes('create') && lower.includes('excel'))) {
     return { supported: true, application: 'excel', task: 'create_chart', confidence: 0.95 }
   }
+  if ((lower.includes('bold') || lower.includes('format') || lower.includes('highlight')) && (lower.includes('cell') || lower.includes('excel') || lower.includes('sheet'))) {
+    return { supported: true, application: 'excel', task: 'format_cells', confidence: 0.95 }
+  }
+  if (lower.includes('autosum') || lower.includes('sum') || lower.includes('total') || lower.includes('add numbers')) {
+    return { supported: true, application: 'excel', task: 'autosum', confidence: 0.95 }
+  }
+  if (lower.includes('freeze') || lower.includes('freeze row') || lower.includes('freeze top row') || lower.includes('lock header')) {
+    return { supported: true, application: 'excel', task: 'freeze_row', confidence: 0.95 }
+  }
+
+  // 3. Word Workflows
+  if ((lower.includes('heading') || lower.includes('heading 1') || (lower.includes('format') && lower.includes('word'))) && !lower.includes('excel')) {
+    return { supported: true, application: 'word', task: 'format_heading', confidence: 0.95 }
+  }
+  if (lower.includes('table') && (lower.includes('word') || lower.includes('doc') || !lower.includes('excel'))) {
+    return { supported: true, application: 'word', task: 'insert_table', confidence: 0.95 }
+  }
+  if (lower.includes('spell') || lower.includes('grammar') || lower.includes('proofread') || lower.includes('editor')) {
+    return { supported: true, application: 'word', task: 'spell_check', confidence: 0.95 }
+  }
+
+  // 4. PowerPoint Workflows
+  if (lower.includes('new slide') || lower.includes('add slide') || lower.includes('insert slide') || (lower.includes('slide') && !lower.includes('transition'))) {
+    return { supported: true, application: 'powerpoint', task: 'add_slide', confidence: 0.95 }
+  }
+  if (lower.includes('transition') || lower.includes('slide transition')) {
+    return { supported: true, application: 'powerpoint', task: 'add_transition', confidence: 0.95 }
+  }
+  if ((lower.includes('picture') || lower.includes('image')) && (lower.includes('powerpoint') || lower.includes('ppt') || lower.includes('slide'))) {
+    return { supported: true, application: 'powerpoint', task: 'insert_image', confidence: 0.95 }
+  }
+
+  // 5. Notepad Workflows
+  if (lower.includes('replace') || lower.includes('find and replace') || (lower.includes('find') && lower.includes('notepad'))) {
+    return { supported: true, application: 'notepad', task: 'find_replace', confidence: 0.95 }
+  }
+  if (lower.includes('save') && (lower.includes('notepad') || lower.includes('txt') || lower.includes('save as'))) {
+    return { supported: true, application: 'notepad', task: 'save_as', confidence: 0.95 }
+  }
+
+  // 6. Calculator Workflows
+  if (lower.includes('calculate') || lower.includes('arithmetic') || lower.includes('plus') || lower.includes('math')) {
+    return { supported: true, application: 'calculator', task: 'basic_arithmetic', confidence: 0.95 }
+  }
+  if (lower.includes('scientific') || lower.includes('sqrt') || lower.includes('sin') || lower.includes('cos') || lower.includes('log')) {
+    return { supported: true, application: 'calculator', task: 'scientific_mode', confidence: 0.95 }
+  }
+
+  // 7. Chrome Workflows
+  if (lower.includes('new tab') || lower.includes('open tab') || lower.includes('open new tab')) {
+    return { supported: true, application: 'chrome', task: 'open_new_tab', confidence: 0.95 }
+  }
+  if (lower.includes('bookmark') || lower.includes('star page')) {
+    return { supported: true, application: 'chrome', task: 'bookmark_page', confidence: 0.95 }
+  }
+  if ((lower.includes('find in page') || lower.includes('search in page') || (lower.includes('find') && (lower.includes('chrome') || lower.includes('page') || lower.includes('web'))))) {
+    return { supported: true, application: 'chrome', task: 'find_in_page', confidence: 0.95 }
+  }
+  if (lower.includes('download') && (lower.includes('chrome') || lower.includes('history') || lower.includes('list') || lower.includes('view downloads'))) {
+    return { supported: true, application: 'chrome', task: 'view_downloads', confidence: 0.95 }
+  }
+  if (lower.includes('clear history') || lower.includes('browsing history') || lower.includes('clear cache') || lower.includes('clear data') || lower.includes('delete history')) {
+    return { supported: true, application: 'chrome', task: 'clear_history', confidence: 0.95 }
+  }
+
+  // 8. Gmail Workflows
+  if (lower.includes('compose') || (lower.includes('send') && (lower.includes('email') || lower.includes('mail') || lower.includes('gmail'))) || lower.includes('new email')) {
+    return { supported: true, application: 'chrome_gmail', task: 'compose_email', confidence: 0.95 }
+  }
+  if (lower.includes('reply') && (lower.includes('email') || lower.includes('mail') || lower.includes('gmail') || lower.includes('message'))) {
+    return { supported: true, application: 'chrome_gmail', task: 'reply_email', confidence: 0.95 }
+  }
+
+  // 9. YouTube Workflows
+  if (lower.includes('fullscreen') || lower.includes('full screen') || lower.includes('maximize video')) {
+    return { supported: true, application: 'chrome_youtube', task: 'fullscreen_video', confidence: 0.95 }
+  }
+  if ((lower.includes('search') || lower.includes('watch') || lower.includes('find')) && (lower.includes('youtube') || lower.includes('video'))) {
+    return { supported: true, application: 'chrome_youtube', task: 'search_video', confidence: 0.95 }
+  }
+
   return {
     supported: false,
-    message: 'This MVP supports Canva background removal, Canva animation, and Excel chart creation.',
+    message: 'INTENT supports Canva, Excel, Word, PowerPoint, Notepad, Calculator, Chrome, Gmail, and YouTube workflows.',
   }
 }
 
@@ -448,17 +627,60 @@ ipcMain.handle('gemini:classify', async (_, text: string) => {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
-    const prompt = `You are an intent classifier for INTENT, a desktop guidance assistant.
-Classify the user's request into exactly one of the supported workflows:
-1. application="canva", task="remove_background" (Remove image background)
-2. application="canva", task="add_animation" (Add animation to element)
-3. application="excel", task="create_chart" (Create chart from data)
+    const prompt = `You are an intent classifier for INTENT, a Windows desktop AI guidance assistant.
+Classify the user's request into exactly one of the supported applications and tasks:
+
+CANVA:
+- application="canva", task="remove_background" (Remove background from image/photo)
+- application="canva", task="add_animation" (Add animation effects like Fade/Pan to canvas element)
+- application="canva", task="add_text" (Add text box or heading to design)
+- application="canva", task="resize_design" (Resize canvas dimensions or use Magic Switch)
+- application="canva", task="download_design" (Download/export design as PNG/JPG/PDF)
+
+EXCEL:
+- application="excel", task="create_chart" (Create column/bar/pie chart from data)
+- application="excel", task="format_cells" (Format cells as bold or highlight)
+- application="excel", task="autosum" (Calculate AutoSum total for column/row)
+- application="excel", task="freeze_row" (Freeze top header row)
+
+WORD:
+- application="word", task="format_heading" (Format selected text as Heading 1)
+- application="word", task="insert_table" (Insert a table grid into document)
+- application="word", task="spell_check" (Run Spelling & Grammar check)
+
+POWERPOINT:
+- application="powerpoint", task="add_slide" (Insert a new slide)
+- application="powerpoint", task="add_transition" (Add transition effect like Fade to slide)
+- application="powerpoint", task="insert_image" (Insert picture/image from device)
+
+NOTEPAD:
+- application="notepad", task="find_replace" (Find and replace text in Notepad)
+- application="notepad", task="save_as" (Save text file with a name)
+
+CALCULATOR:
+- application="calculator", task="basic_arithmetic" (Perform basic addition/arithmetic)
+- application="calculator", task="scientific_mode" (Switch to scientific calculator mode)
+
+GOOGLE CHROME:
+- application="chrome", task="open_new_tab" (Open a new browser tab and navigate)
+- application="chrome", task="bookmark_page" (Bookmark/save current web page)
+- application="chrome", task="find_in_page" (Find text/search in page via Ctrl+F)
+- application="chrome", task="view_downloads" (View downloads list)
+- application="chrome", task="clear_history" (Clear browsing history and cookies)
+
+GMAIL:
+- application="chrome_gmail", task="compose_email" (Compose and send new email)
+- application="chrome_gmail", task="reply_email" (Reply to an email conversation)
+
+YOUTUBE:
+- application="chrome_youtube", task="search_video" (Search for video or creator)
+- application="chrome_youtube", task="fullscreen_video" (Maximize video to full screen)
 
 USER REQUEST: "${text}"
 
 RESPONSE FORMAT (JSON ONLY, NO MARKDOWN):
 If supported: {"supported":true,"application":"canva","task":"remove_background","confidence":0.95}
-If unsupported: {"supported":false,"message":"This MVP supports Canva background removal, Canva animation, and Excel chart creation."}`
+If unsupported: {"supported":false,"message":"Unsupported request. INTENT supports Canva, Excel, Word, PowerPoint, Notepad, Calculator, Chrome, Gmail, and YouTube workflows."}`
 
     const result = await model.generateContent(prompt)
     const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
@@ -583,7 +805,30 @@ RESPONSE FORMAT (JSON ONLY):
       { inlineData: { data: base64, mimeType: 'image/png' } },
     ])
     const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+
+    if (!parsed || !parsed.found) {
+      return { found: false, confidence: 0, reason: parsed?.reason || 'Target not found by vision' }
+    }
+
+    const primary = screen.getPrimaryDisplay()
+    const screenWidth = primary.bounds.width
+    const screenHeight = primary.bounds.height
+    const { x, y, width, height, confidence = 0 } = parsed
+
+    if (
+      typeof width !== 'number' || typeof height !== 'number' ||
+      typeof x !== 'number' || typeof y !== 'number' ||
+      width > screenWidth * 0.70 ||
+      height > screenHeight * 0.70 ||
+      x < 0 || y < 0 ||
+      confidence < 0.55
+    ) {
+      console.warn(`[INTENT] Gemini vision bounds rejected: x=${x}, y=${y}, w=${width}, h=${height}, conf=${confidence} (Screen: ${screenWidth}x${screenHeight})`)
+      return { found: false, confidence: 0, reason: 'Gemini returned full-window bounds — rejected' }
+    }
+
+    return parsed
   } catch (err) {
     console.warn('[INTENT] Gemini target vision error:', err)
     return { found: false, confidence: 0 }
@@ -640,5 +885,44 @@ ipcMain.handle('app:api-status', () => {
     hasKey: !!process.env.GEMINI_API_KEY,
     isDev,
     domBridgeConnected,
+    pythonStartupReport,
+  }
+})
+
+ipcMain.handle('app:startup-report', () => {
+  return pythonStartupReport
+})
+
+ipcMain.handle('extension:update-id', async (_, extensionId: string) => {
+  try {
+    execFileSync('python', [
+      join(app.getAppPath(), 'scripts/update_extension_id.py'),
+      extensionId
+    ], { timeout: 5000, windowsHide: true, encoding: 'utf8' })
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: String(e) }
+  }
+})
+
+ipcMain.handle('setup:check-python-deps', async () => {
+  try {
+    const out = execFileSync('python', [
+      join(app.getAppPath(), 'scripts/check_python_deps.py')
+    ], { timeout: 25000, windowsHide: true, encoding: 'utf8' })
+    return { success: true, output: out }
+  } catch (e: any) {
+    return { success: false, output: e?.stdout || String(e) }
+  }
+})
+
+ipcMain.handle('setup:install-native-host', async () => {
+  try {
+    const out = execFileSync('python', [
+      join(app.getAppPath(), 'scripts/install_native_host.py')
+    ], { timeout: 10000, windowsHide: true, encoding: 'utf8' })
+    return { success: true, output: out }
+  } catch (e: any) {
+    return { success: false, error: String(e) }
   }
 })

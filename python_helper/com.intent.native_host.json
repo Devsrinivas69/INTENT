@@ -1,0 +1,12 @@
+{
+  "name": "com.intent.native_host",
+  "description": "INTENT Native Messaging Host",
+  "path": "C:\\Users\\srinivas\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://INTENT_EXTENSION_PLACEHOLDER/"
+  ],
+  "args": [
+    "C:\\Users\\srinivas\\OneDrive\\Desktop\\INTENT\\python_helper\\intent_native_host.py"
+  ]
+}

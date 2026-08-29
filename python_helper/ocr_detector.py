@@ -12,9 +12,25 @@ try:
     import winrt.windows.media.ocr as ocr
     import winrt.windows.graphics.imaging as imaging
     import winrt.windows.storage.streams as streams
+    import winrt.windows.globalization as globalization
     WINRT_OCR_AVAILABLE = True
 except Exception:
     WINRT_OCR_AVAILABLE = False
+
+
+def check_ocr_available() -> bool:
+    """Check if WinRT OCR is available and functional."""
+    if not WINRT_OCR_AVAILABLE:
+        return False
+    try:
+        engine = ocr.OcrEngine.try_create_from_user_profile_languages()
+        if engine is not None:
+            return True
+        lang = globalization.Language("en-US")
+        engine = ocr.OcrEngine.try_create_from_language(lang)
+        return engine is not None
+    except Exception:
+        return False
 
 
 def normalize_text(text: str) -> str:
@@ -26,7 +42,11 @@ def normalize_text(text: str) -> str:
 
 
 SYNONYM_GROUPS = [
-    {'bg remover', 'background remover', 'remove background', 'background removal', 'bg remove', 'eraser'},
+    {
+        'bg remover', 'background remover', 'remove background', 'background removal',
+        'bg remove', 'eraser', 'edit photo', 'edit image', 'magic studio', 'magic edit',
+        'remove bg', 'edit'
+    },
     {'magic studio', 'magic edit', 'magic expand', 'effects', 'photo editor'},
     {'edit photo', 'edit', 'edit image', 'photo editor', 'effects', 'adjust', 'filter', 'tools'},
     {'animate', 'animation', 'add animation', 'fade', 'pan', 'rise', 'pop', 'motion'},
@@ -116,8 +136,23 @@ async def _run_winrt_ocr(b64_image: str):
         decoder = await imaging.BitmapDecoder.create_async(stream)
         bitmap = await decoder.get_software_bitmap_async()
 
-        engine = ocr.OcrEngine.try_create_from_user_profile_languages()
+        # Try user profile languages first
+        engine = None
+        try:
+            engine = ocr.OcrEngine.try_create_from_user_profile_languages()
+        except Exception:
+            engine = None
+
+        # Fallback to en-US language
         if not engine:
+            try:
+                lang = globalization.Language("en-US")
+                engine = ocr.OcrEngine.try_create_from_language(lang)
+            except Exception:
+                engine = None
+
+        if not engine:
+            print("[OCR] Warning: No OCR engine available (user profile or en-US).", flush=True)
             return []
 
         result = await engine.recognize_async(bitmap)

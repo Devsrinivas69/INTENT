@@ -61,7 +61,36 @@ def check_forbidden_patterns():
 def check_workflows():
     print_section("AUDIT 2: WORKFLOW DEFINITIONS INTEGRITY")
     workflows_dir = os.path.join(WORKSPACE_ROOT, 'src', 'workflows')
-    expected_files = ['canvaRemoveBackground.ts', 'canvaAnimation.ts', 'excelChart.ts']
+    expected_files = [
+        'canvaRemoveBackground.ts',
+        'canvaAnimation.ts',
+        'canvaAddText.ts',
+        'canvaResizeDesign.ts',
+        'canvaDownloadDesign.ts',
+        'excelChart.ts',
+        'excelFormatCells.ts',
+        'excelAutoSum.ts',
+        'excelFreezeRow.ts',
+        'wordFormatHeading.ts',
+        'wordInsertTable.ts',
+        'wordSpellCheck.ts',
+        'powerpointAddSlide.ts',
+        'powerpointAddTransition.ts',
+        'powerpointInsertImage.ts',
+        'notepadFindReplace.ts',
+        'notepadSaveAs.ts',
+        'calculatorBasicArithmetic.ts',
+        'calculatorScientificMode.ts',
+        'chromeOpenNewTab.ts',
+        'chromeBookmarkPage.ts',
+        'chromeFindInPage.ts',
+        'chromeDownloads.ts',
+        'chromeHistory.ts',
+        'gmailCompose.ts',
+        'gmailReply.ts',
+        'youtubeSearch.ts',
+        'youtubeFullscreen.ts',
+    ]
 
     all_ok = True
     for wf_file in expected_files:
@@ -96,8 +125,10 @@ def check_python_helper_status():
             bufsize=1,
             cwd=WORKSPACE_ROOT
         )
-        ready = p.stdout.readline()
-        print("Helper stdout:", ready.strip())
+        line1 = p.stdout.readline()
+        print("Helper stdout:", line1.strip())
+        line2 = p.stdout.readline()
+        print("Helper status:", line2.strip())
 
         # Send ping
         p.stdin.write(json.dumps({'action': 'ping'}) + '\n')

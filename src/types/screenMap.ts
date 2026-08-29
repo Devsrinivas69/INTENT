@@ -156,6 +156,10 @@ export interface DisplayInfo {
   screenWidth: number
   screenHeight: number
   scaleFactor: number
+  virtualLeft?: number
+  virtualTop?: number
+  totalWidth?: number
+  totalHeight?: number
   displays?: DisplayRect[]
 }
 

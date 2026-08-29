@@ -1,0 +1,109 @@
+{
+  "dpi_scale": 1.5,
+  "dpi_percent": 150,
+  "timestamp": "2026-08-29T13:06:44.193024",
+  "trials_per_target": 2,
+  "apps_tested": [
+    "excel"
+  ],
+  "summary": {
+    "excel": {
+      "total_trials": 8,
+      "detected": 0,
+      "detection_rate_pct": 0.0,
+      "avg_confidence": 0,
+      "avg_latency_ms": 0,
+      "methods_used": []
+    }
+  },
+  "raw_results": [
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 1,
+      "detected": false,
+      "confidence": 0.0,
+      "method": "none",
+      "latency_ms": 0.5,
+      "bounds_valid": false,
+      "error": "(6, 'EnumWindows', 'The handle is invalid.')"
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 2,
+      "detected": false,
+      "confidence": 0.0,
+      "method": "none",
+      "latency_ms": 0.5,
+      "bounds_valid": false,
+      "error": "(6, 'EnumWindows', 'The handle is invalid.')"
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 1,
+      "detected": false,
+      "confidence": 0.0,
+      "method": "none",
+      "latency_ms": 0.7,
+      "bounds_valid": false,
+      "error": "(6, 'EnumWindows', 'The handle is invalid.')"
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 2,
+      "detected": false,
+      "confidence": 0.0,
+      "method": "none",
+      "latency_ms": 0.5,
+      "bounds_valid": false,
+      "error": "(6, 'EnumWindows', 'The handle is invalid.')"
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 1,
+      "detected": false,
+      "confidence": 0.0,
+      "method": "none",
+      "latency_ms": 0.5,
+      "bounds_valid": false,
+      "error": "(6, 'EnumWindows', 'The handle is invalid.')"
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 2,
+      "detected": false,
+      "confidence": 0.0,
+      "method": "none",
+      "latency_ms": 0.5,
+      "bounds_valid": false,
+      "error": "(6, 'EnumWindows', 'The handle is invalid.')"
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 1,
+      "detected": false,
+      "confidence": 0.0,
+      "method": "none",
+      "latency_ms": 0.5,
+      "bounds_valid": false,
+      "error": "(6, 'EnumWindows', 'The handle is invalid.')"
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 2,
+      "detected": false,
+      "confidence": 0.0,
+      "method": "none",
+      "latency_ms": 0.5,
+      "bounds_valid": false,
+      "error": "(6, 'EnumWindows', 'The handle is invalid.')"
+    }
+  ]
+}

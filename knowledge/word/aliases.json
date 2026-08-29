@@ -1,0 +1,15 @@
+{
+  "application": "word",
+  "aliases": {
+    "home_tab": ["Home", "Home Tab", "Ribbon Home"],
+    "insert_tab": ["Insert", "Insert Tab", "Ribbon Insert"],
+    "review_tab": ["Review", "Review Tab", "Ribbon Review"],
+    "heading_1": ["Heading 1", "Heading1", "Heading 1 Style", "Styles"],
+    "bold": ["Bold", "B", "Font Bold"],
+    "font_size": ["Font Size", "Size", "Font Size Box"],
+    "table": ["Table", "Insert Table", "Tables"],
+    "spelling": ["Spelling & Grammar", "Spelling", "Editor", "Grammar", "Spell Check"],
+    "find_replace": ["Find", "Replace", "Find & Replace", "Ctrl+H"],
+    "save": ["Save", "Ctrl+S", "Save As"]
+  }
+}

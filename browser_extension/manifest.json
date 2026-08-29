@@ -1,19 +1,30 @@
 {
   "manifest_version": 3,
-  "name": "INTENT — Canva DOM Bridge",
-  "version": "1.0.0",
-  "description": "Provides real physical UI element coordinates from Canva pages to the INTENT desktop guidance system.",
-  "permissions": ["activeTab"],
-  "host_permissions": [
-    "https://*.canva.com/*",
-    "https://www.canva.com/*"
+  "name": "INTENT DOM Bridge",
+  "version": "1.1",
+  "description": "INTENT UI guidance DOM element bridge",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "nativeMessaging",
+    "storage"
   ],
+  "host_permissions": [
+    "https://www.canva.com/*",
+    "https://canva.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://*.canva.com/*", "https://www.canva.com/*"],
+      "matches": [
+        "https://www.canva.com/*",
+        "https://canva.com/*",
+        "https://*.canva.com/*"
+      ],
       "js": ["content.js"],
-      "run_at": "document_idle",
-      "all_frames": false
+      "run_at": "document_idle"
     }
   ]
 }

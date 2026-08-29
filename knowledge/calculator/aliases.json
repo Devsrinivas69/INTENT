@@ -1,0 +1,9 @@
+{
+  "application": "calculator",
+  "aliases": {
+    "numbers": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+    "operators": ["plus", "minus", "multiply", "divide", "equals", "clear"],
+    "modes": ["scientific", "standard", "programmer"],
+    "scientific_functions": ["square root", "percent", "sin", "cos", "tan", "log", "pi"]
+  }
+}

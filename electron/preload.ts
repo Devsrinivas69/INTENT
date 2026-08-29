@@ -69,9 +69,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('dom-bridge:snapshot', handler)
   },
 
-  // ── App Status ─────────────────────────────────────────────────────────────
-  getApiStatus: (): Promise<{ hasKey: boolean; isDev: boolean }> =>
+  // ── App Status & Setup ─────────────────────────────────────────────────────
+  getApiStatus: (): Promise<{ hasKey: boolean; isDev: boolean; domBridgeConnected?: boolean; pythonStartupReport?: any }> =>
     ipcRenderer.invoke('app:api-status'),
+
+  getStartupReport: (): Promise<any> =>
+    ipcRenderer.invoke('app:startup-report'),
+
+  updateExtensionId: (extensionId: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('extension:update-id', extensionId),
+
+  checkPythonDeps: (): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('setup:check-python-deps'),
+
+  installNativeHost: (): Promise<{ success: boolean; output?: string; error?: string }> =>
+    ipcRenderer.invoke('setup:install-native-host'),
 
   // ── Overlay Events ────────────────────────────────────────────────────────
   onOverlayUpdate: (callback: OverlayUpdateHandler) => {

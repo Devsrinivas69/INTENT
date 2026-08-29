@@ -1,0 +1,12 @@
+{
+  "application": "notepad",
+  "aliases": {
+    "text_area": ["Text Editor", "Edit", "Document", "Notepad Text Area"],
+    "file_menu": ["File", "File Menu"],
+    "edit_menu": ["Edit", "Edit Menu"],
+    "find": ["Find", "Find Dialog", "Ctrl+F"],
+    "replace": ["Replace", "Replace Dialog", "Ctrl+H", "Replace All"],
+    "save": ["Save", "Save As", "Ctrl+S"],
+    "word_wrap": ["Word Wrap", "Wrap"]
+  }
+}

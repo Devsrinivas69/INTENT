@@ -1,0 +1,2628 @@
+{
+  "dpi_scale": 1.25,
+  "dpi_percent": 125,
+  "timestamp": "2026-08-29T13:09:30.046796",
+  "trials_per_target": 10,
+  "apps_tested": [
+    "excel",
+    "word",
+    "powerpoint",
+    "notepad",
+    "calculator",
+    "chrome"
+  ],
+  "summary": {
+    "excel": {
+      "total_trials": 40,
+      "detected": 40,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.988,
+      "avg_latency_ms": 6.3,
+      "methods_used": [
+        "uia"
+      ]
+    },
+    "word": {
+      "total_trials": 30,
+      "detected": 30,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.99,
+      "avg_latency_ms": 4.1,
+      "methods_used": [
+        "uia"
+      ]
+    },
+    "powerpoint": {
+      "total_trials": 20,
+      "detected": 20,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.99,
+      "avg_latency_ms": 3.7,
+      "methods_used": [
+        "uia"
+      ]
+    },
+    "notepad": {
+      "total_trials": 20,
+      "detected": 20,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.99,
+      "avg_latency_ms": 2.5,
+      "methods_used": [
+        "uia"
+      ]
+    },
+    "calculator": {
+      "total_trials": 20,
+      "detected": 20,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.99,
+      "avg_latency_ms": 0.9,
+      "methods_used": [
+        "uia"
+      ]
+    },
+    "chrome": {
+      "total_trials": 20,
+      "detected": 20,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.985,
+      "avg_latency_ms": 7.1,
+      "methods_used": [
+        "uia"
+      ]
+    }
+  },
+  "raw_results": [
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 8.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 11.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 9.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 12.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 7.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.3,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.3,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 8.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.3,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 425,
+        "y": 68,
+        "w": 75,
+        "h": 32
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 11.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 11.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 14.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 13.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 10.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 7.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 4.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 6.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 11.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 9.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 600,
+        "y": 118,
+        "w": 162,
+        "h": 80
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.3,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 75,
+        "y": 68,
+        "w": 80,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 400,
+        "y": 68,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Insert",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 160,
+        "y": 68,
+        "w": 85,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "powerpoint",
+      "target": "Transitions",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 312,
+        "y": 68,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.3,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 87,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.3,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 25,
+        "y": 43,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 150,
+        "y": 387,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 462,
+        "w": 93,
+        "h": 62
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 6.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 13.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 3.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 2.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 2.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 5.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 11.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 11.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 9.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "Address Bar",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 10.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 300,
+        "y": 93,
+        "w": 1062,
+        "h": 42
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 7.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 8.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 8.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 9.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    },
+    {
+      "app": "chrome",
+      "target": "New Tab",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 350,
+        "y": 18,
+        "w": 40,
+        "h": 40
+      }
+    }
+  ]
+}

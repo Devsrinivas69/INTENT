@@ -61,10 +61,12 @@ export class CoordinateMapper {
     // Find the display this element belongs to for the correct scale factor
     const display = this.findDisplayForPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
     const sf = display?.scaleFactor ?? this.getScaleFactor()
+    const vLeft = this.meta.virtualLeft ?? 0
+    const vTop = this.meta.virtualTop ?? 0
 
     return {
-      x: Math.round(bounds.x / sf),
-      y: Math.round(bounds.y / sf),
+      x: Math.round((bounds.x - vLeft) / sf),
+      y: Math.round((bounds.y - vTop) / sf),
       width: Math.max(24, Math.round(bounds.width / sf)),
       height: Math.max(16, Math.round(bounds.height / sf)),
     }
@@ -89,8 +91,8 @@ export class CoordinateMapper {
     overlayBounds: DesktopBounds,
     targetType: string = 'BUTTON',
   ): { x: number; y: number } {
-    const screenW = this.meta.screenWidth || (typeof window !== 'undefined' ? window.innerWidth : 1920) || 1920
-    const screenH = this.meta.screenHeight || (typeof window !== 'undefined' ? window.innerHeight : 1080) || 1080
+    const screenW = this.meta.totalWidth || this.meta.screenWidth || (typeof window !== 'undefined' ? window.innerWidth : 1920) || 1920
+    const screenH = this.meta.totalHeight || this.meta.screenHeight || (typeof window !== 'undefined' ? window.innerHeight : 1080) || 1080
 
     const centerX = Math.max(60, Math.min(screenW - 60, Math.round(overlayBounds.x + overlayBounds.width / 2)))
 

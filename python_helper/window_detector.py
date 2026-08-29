@@ -57,22 +57,54 @@ def enum_windows_callback(hwnd, results):
 
 
 def classify_window(win):
-    """Classify a window as 'canva', 'excel', or None."""
-    title_lower = win['title'].lower()
-    cls = win['class']
+    """Classify a window as 'canva', 'excel', 'word', 'powerpoint', 'notepad', 'calculator', 'chrome', etc."""
+    title_lower = win.get('title', '').lower()
+    cls = win.get('class', '')
 
-    # Excel: known class name XLMAIN
-    if cls == 'XLMAIN' or 'excel' in title_lower:
+    # Reject IDE / terminal / development windows from false positives
+    if any(dev in title_lower for dev in ['visual studio code', 'vscode', 'powershell', 'cmd.exe', 'command prompt', 'antigravity']):
+        return None
+
+    # Excel: known class name XLMAIN or Excel document title
+    if cls == 'XLMAIN' or ('excel' in title_lower and ('.xlsx' in title_lower or '.xls' in title_lower or ' - excel' in title_lower or title_lower == 'excel')):
         return 'excel'
+
+    # Word: known class name OpusApp
+    if cls == 'OpusApp' or ('word' in title_lower and ('.docx' in title_lower or '.doc' in title_lower or ' - word' in title_lower or title_lower == 'word')):
+        return 'word'
+
+    # PowerPoint: known class name PPTFrameClass
+    if cls == 'PPTFrameClass' or ('powerpoint' in title_lower and ('.pptx' in title_lower or '.ppt' in title_lower or ' - powerpoint' in title_lower or title_lower == 'powerpoint')):
+        return 'powerpoint'
+
+    # Notepad: known class name Notepad
+    if cls == 'Notepad' or (('notepad' in cls.lower() or cls == 'Notepad') and ('.txt' in title_lower or ' - notepad' in title_lower or 'untitled' in title_lower or title_lower == 'notepad')):
+        return 'notepad'
+
+    # Calculator: known class name ApplicationFrameWindow with Calculator title
+    if ('calculator' in title_lower or title_lower == 'calculator') and cls in ('ApplicationFrameWindow', 'CalcFrame', 'Windows.UI.Core.CoreWindow'):
+        return 'calculator'
 
     # Canva: runs inside Chrome/Edge/Brave — look for 'canva' in title
     if cls in ('Chrome_WidgetWin_1', 'MicrosoftEdgeWin32',
                'Chrome_WidgetWin_0', 'BraveWin'):
         if 'canva' in title_lower:
             return 'canva'
+        elif 'gmail' in title_lower or 'mail.google' in title_lower:
+            return 'chrome_gmail'
+        elif 'youtube' in title_lower or 'youtube.com' in title_lower:
+            return 'chrome_youtube'
+        elif 'google docs' in title_lower or 'docs.google' in title_lower:
+            return 'chrome_docs'
+        elif 'google sheets' in title_lower or 'sheets.google' in title_lower:
+            return 'chrome_sheets'
+        elif 'google slides' in title_lower or 'slides.google' in title_lower:
+            return 'chrome_slides'
+        else:
+            return 'chrome'
 
     # Canva desktop app (if installed)
-    if 'canva' in title_lower:
+    if 'canva' in title_lower and cls not in ('Chrome_WidgetWin_1', 'MicrosoftEdgeWin32'):
         return 'canva'
 
     return None
@@ -80,33 +112,49 @@ def classify_window(win):
 
 def get_foreground_window_info():
     """Return detailed info about the currently active foreground window."""
-    hwnd = win32gui.GetForegroundWindow()
-    if not hwnd:
+    try:
+        hwnd = win32gui.GetForegroundWindow()
+        if not hwnd:
+            return None
+        title = win32gui.GetWindowText(hwnd)
+        cls = win32gui.GetClassName(hwnd)
+        rect = win32gui.GetWindowRect(hwnd)
+        scale = get_scale_factor_for_monitor(hwnd)
+        return {
+            'hwnd': hwnd,
+            'title': title,
+            'class': cls,
+            'x': rect[0],
+            'y': rect[1],
+            'width': rect[2] - rect[0],
+            'height': rect[3] - rect[1],
+            'scale_factor': scale,
+            'app': classify_window({'title': title, 'class': cls}),
+        }
+    except Exception:
         return None
-    title = win32gui.GetWindowText(hwnd)
-    cls = win32gui.GetClassName(hwnd)
-    rect = win32gui.GetWindowRect(hwnd)
-    scale = get_scale_factor_for_monitor(hwnd)
-    return {
-        'hwnd': hwnd,
-        'title': title,
-        'class': cls,
-        'x': rect[0],
-        'y': rect[1],
-        'width': rect[2] - rect[0],
-        'height': rect[3] - rect[1],
-        'scale_factor': scale,
-        'app': classify_window({'title': title, 'class': cls}),
-    }
+
+
+def get_active_window_info(app_name: str = None):
+    """Find the window for app_name, or fallback to current foreground window."""
+    try:
+        if app_name:
+            return find_app_window(app_name)
+        return get_foreground_window_info()
+    except Exception:
+        return None
 
 
 def find_all_windows():
     """Enumerate all visible desktop windows and classify them."""
     results = []
-    win32gui.EnumWindows(enum_windows_callback, results)
-    for w in results:
-        w['app'] = classify_window(w)
-        w['scale_factor'] = get_scale_factor_for_monitor(w['hwnd'])
+    try:
+        win32gui.EnumWindows(enum_windows_callback, results)
+        for w in results:
+            w['app'] = classify_window(w)
+            w['scale_factor'] = get_scale_factor_for_monitor(w['hwnd'])
+    except Exception:
+        pass
     return results
 
 

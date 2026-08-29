@@ -1,0 +1,159 @@
+{
+  "dpi_scale": 1.5,
+  "dpi_percent": 150,
+  "timestamp": "2026-08-29T13:09:13.251011",
+  "trials_per_target": 2,
+  "apps_tested": [
+    "excel"
+  ],
+  "summary": {
+    "excel": {
+      "total_trials": 8,
+      "detected": 8,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.988,
+      "avg_latency_ms": 6.1,
+      "methods_used": [
+        "uia"
+      ]
+    }
+  },
+  "raw_results": [
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Insert",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Home",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 510,
+        "y": 82,
+        "w": 90,
+        "h": 39
+      }
+    },
+    {
+      "app": "excel",
+      "target": "View",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 510,
+        "y": 82,
+        "w": 90,
+        "h": 39
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 17.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 720,
+        "y": 142,
+        "w": 195,
+        "h": 96
+      }
+    },
+    {
+      "app": "excel",
+      "target": "Recommended Charts",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.98,
+      "method": "uia",
+      "latency_ms": 14.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 720,
+        "y": 142,
+        "w": 195,
+        "h": 96
+      }
+    }
+  ]
+}

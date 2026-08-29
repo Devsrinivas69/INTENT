@@ -1,0 +1,363 @@
+{
+  "dpi_scale": 1.5,
+  "dpi_percent": 150,
+  "timestamp": "2026-08-29T13:09:38.076992",
+  "trials_per_target": 10,
+  "apps_tested": [
+    "notepad"
+  ],
+  "summary": {
+    "notepad": {
+      "total_trials": 20,
+      "detected": 20,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.99,
+      "avg_latency_ms": 3.7,
+      "methods_used": [
+        "uia"
+      ]
+    }
+  },
+  "raw_results": [
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "Edit",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 105,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    },
+    {
+      "app": "notepad",
+      "target": "File",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 30,
+        "y": 52,
+        "w": 67,
+        "h": 33
+      }
+    }
+  ]
+}

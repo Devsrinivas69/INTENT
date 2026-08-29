@@ -1,6 +1,7 @@
 """
-INTENT Python Helper — Main Process v4.3
-Deterministic multi-tier target detection & state transition verification for Canva and Microsoft Excel.
+INTENT Python Helper — Main Process v4.4
+Deterministic multi-tier target detection & state transition verification for Windows Desktop apps:
+Microsoft Excel, Word, PowerPoint, Notepad, Windows Calculator, and Canva.
 """
 
 import sys
@@ -14,9 +15,11 @@ from window_detector import (
 )
 from screen_capture import get_monitor_info
 from uia_detector import (
-    get_hwnd_accessible_elements, find_element_in_hwnd, verify_excel_state
+    get_hwnd_accessible_elements, find_element_in_hwnd,
+    verify_excel_state, verify_word_state, verify_powerpoint_state,
+    verify_notepad_state, verify_calculator_state
 )
-from ocr_detector import ocr_full_image, find_best_text_match
+from ocr_detector import ocr_full_image, find_best_text_match, check_ocr_available, WINRT_OCR_AVAILABLE
 from opencv_detector import (
     detect_canvas_image_object, detect_canva_selection_state,
     detect_edit_photo_panel, detect_animation_panel,
@@ -27,12 +30,62 @@ from screen_map_builder import (
 )
 
 
+def generate_startup_report() -> dict:
+    """Generate comprehensive startup health report."""
+    uia_ok = False
+    try:
+        import uiautomation
+        uia_ok = True
+    except Exception:
+        pass
+
+    ocr_ok = check_ocr_available()
+
+    cv_ok = False
+    try:
+        import cv2
+        cv_ok = True
+    except Exception:
+        pass
+
+    mss_ok = False
+    try:
+        import mss
+        mss_ok = True
+    except Exception:
+        pass
+
+    try:
+        all_windows = find_all_windows()
+        detectable = {
+            'excel': any(w.get('app') == 'excel' for w in all_windows),
+            'word': any(w.get('app') == 'word' for w in all_windows),
+            'powerpoint': any(w.get('app') == 'powerpoint' for w in all_windows),
+            'notepad': any(w.get('app') == 'notepad' for w in all_windows),
+            'calculator': any(w.get('app') == 'calculator' for w in all_windows),
+            'canva': any(w.get('app') == 'canva' for w in all_windows),
+        }
+    except Exception:
+        detectable = {'excel': False, 'word': False, 'powerpoint': False, 'notepad': False, 'calculator': False, 'canva': False}
+
+    return {
+        'type': 'startup_report',
+        'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        'uia_available': uia_ok,
+        'ocr_available': ocr_ok,
+        'opencv_available': cv_ok,
+        'mss_available': mss_ok,
+        'winrt_available': WINRT_OCR_AVAILABLE,
+        'supported_apps_detectable': detectable,
+    }
+
+
 def process(cmd: dict) -> dict:
     action = cmd.get('action', '')
 
     # ── ping ──────────────────────────────────────────────────────────────────
     if action == 'ping':
-        return {'status': 'ok', 'version': '4.3.0'}
+        return {'status': 'ok', 'version': '4.4.0'}
 
     # ── get_window_info ───────────────────────────────────────────────────────
     elif action == 'get_window_info':
@@ -85,10 +138,10 @@ def process(cmd: dict) -> dict:
         level_number = cmd.get('level_number', 1)
         screenshot = cmd.get('screenshot')
 
-        # ── EXCEL: TIER 1 DIRECT UIA ACCESSIBILITY TREE ───────────────────────
-        if app_name == 'excel' and hwnd:
-            uia_match = find_element_in_hwnd(hwnd, target_text)
-            if uia_match and uia_match.get('confidence', 0) >= 0.60:
+        # ── NATIVE APPS & CHROME: TIER 1 DIRECT UIA ACCESSIBILITY TREE ────────
+        if app_name in ('excel', 'word', 'powerpoint', 'notepad', 'calculator', 'chrome', 'chrome_gmail', 'chrome_youtube', 'chrome_docs', 'chrome_sheets') and hwnd:
+            uia_match = find_element_in_hwnd(hwnd, target_text, app_name=app_name)
+            if uia_match and uia_match.get('confidence', 0) >= 0.55:
                 return {
                     'found': True,
                     'stable': True,
@@ -188,6 +241,42 @@ def process(cmd: dict) -> dict:
             if uia_result.get('completed') and uia_result.get('confidence', 0) >= 0.70:
                 return {**uia_result, 'method': 'uia'}
 
+        # ── WORD UIA & STATE VERIFICATION ─────────────────────────────────────
+        if app_name == 'word' and hwnd:
+            word_result = verify_word_state(hwnd, condition)
+            if word_result.get('completed') and word_result.get('confidence', 0) >= 0.70:
+                return {**word_result, 'method': 'uia'}
+
+        # ── POWERPOINT UIA & STATE VERIFICATION ───────────────────────────────
+        if app_name == 'powerpoint' and hwnd:
+            ppt_result = verify_powerpoint_state(hwnd, condition)
+            if ppt_result.get('completed') and ppt_result.get('confidence', 0) >= 0.70:
+                return {**ppt_result, 'method': 'uia'}
+
+        # ── NOTEPAD UIA & STATE VERIFICATION ──────────────────────────────────
+        if app_name == 'notepad' and hwnd:
+            np_result = verify_notepad_state(hwnd, condition)
+            if np_result.get('completed') and np_result.get('confidence', 0) >= 0.70:
+                return {**np_result, 'method': 'uia'}
+
+        # ── CALCULATOR UIA & STATE VERIFICATION ───────────────────────────────
+        if app_name == 'calculator' and hwnd:
+            calc_result = verify_calculator_state(hwnd, condition)
+            if calc_result.get('completed') and calc_result.get('confidence', 0) >= 0.70:
+                return {**calc_result, 'method': 'uia'}
+
+        # ── CHROME & WEB APPS (Gmail, YouTube, Docs, Sheets) ──────────────────
+        if app_name in ('chrome', 'chrome_gmail', 'chrome_youtube', 'chrome_docs', 'chrome_sheets'):
+            if screenshot_before_b64 and screenshot_after_b64:
+                diff = compute_screen_diff(screenshot_before_b64, screenshot_after_b64)
+                if diff.get('changed') and diff.get('diff_score', 0) > 0.03:
+                    return {
+                        'completed': True,
+                        'confidence': min(0.90, 0.60 + diff['diff_score'] * 5),
+                        'evidence': f'Chrome web content change detected (diff={diff["diff_score"]:.3f})',
+                        'method': 'screen_diff',
+                    }
+
         # ── LEVEL 1 CANVA: PURPLE SELECTION OUTLINE MATCHING TARGET ───────────
         if app_name == 'canva' and level_number == 1:
             if screenshot_after_b64:
@@ -260,7 +349,9 @@ def process(cmd: dict) -> dict:
 
 def main():
     sys.stdout.reconfigure(line_buffering=True)
-    print(json.dumps({'status': 'ready', 'version': '4.3.0'}))
+    report = generate_startup_report()
+    print(json.dumps(report))
+    print(json.dumps({'status': 'ready', 'version': '4.4.0'}))
 
     for line in sys.stdin:
         line = line.strip()

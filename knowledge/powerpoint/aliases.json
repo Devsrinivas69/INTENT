@@ -1,0 +1,14 @@
+{
+  "application": "powerpoint",
+  "aliases": {
+    "home_tab": ["Home", "Home Tab", "Ribbon Home"],
+    "insert_tab": ["Insert", "Insert Tab", "Ribbon Insert"],
+    "transitions_tab": ["Transitions", "Transitions Tab", "Ribbon Transitions"],
+    "new_slide": ["New Slide", "Add Slide", "New Slide Button"],
+    "slide_layout": ["Layout", "Slide Layout", "Layouts"],
+    "text_box": ["Text Box", "TextBox", "Insert Text"],
+    "insert_image": ["Pictures", "Insert Picture", "Image", "Photo", "This Device"],
+    "fade_transition": ["Fade", "Push", "Wipe", "Morph", "Fade Transition"],
+    "slideshow": ["Slide Show", "Present", "F5", "From Beginning"]
+  }
+}

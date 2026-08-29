@@ -1,14 +1,58 @@
 import { z } from 'zod'
 
-// ─── Supported Applications & Tasks ──────────────────────────────────────────
-
-export const SupportedApplicationSchema = z.enum(['canva', 'excel'])
+export const SupportedApplicationSchema = z.enum([
+  'canva',
+  'excel',
+  'word',
+  'powerpoint',
+  'notepad',
+  'calculator',
+  'chrome',
+  'chrome_gmail',
+  'chrome_youtube',
+  'chrome_docs',
+  'chrome_sheets',
+])
 export type SupportedApplication = z.infer<typeof SupportedApplicationSchema>
 
 export const SupportedTaskSchema = z.enum([
+  // Canva Workflows
   'remove_background',
   'add_animation',
+  'add_text',
+  'resize_design',
+  'download_design',
+  // Excel Workflows
   'create_chart',
+  'format_cells',
+  'autosum',
+  'freeze_row',
+  // Word Workflows
+  'format_heading',
+  'insert_table',
+  'spell_check',
+  // PowerPoint Workflows
+  'add_slide',
+  'add_transition',
+  'insert_image',
+  // Notepad Workflows
+  'find_replace',
+  'save_as',
+  // Calculator Workflows
+  'basic_arithmetic',
+  'scientific_mode',
+  // Chrome General Workflows
+  'open_new_tab',
+  'bookmark_page',
+  'find_in_page',
+  'view_downloads',
+  'clear_history',
+  // Gmail Workflows
+  'compose_email',
+  'reply_email',
+  // YouTube Workflows
+  'search_video',
+  'fullscreen_video',
 ])
 export type SupportedTask = z.infer<typeof SupportedTaskSchema>
 

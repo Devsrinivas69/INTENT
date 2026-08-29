@@ -5,7 +5,7 @@ All coordinates are ABSOLUTE WINDOWS DESKTOP COORDINATES.
 """
 
 import time
-from uia_detector import get_hwnd_accessible_elements, EXCEL_SEMANTIC_ALIASES
+from uia_detector import get_hwnd_accessible_elements, EXCEL_SEMANTIC_ALIASES, ALL_APP_ALIASES
 from ocr_detector import ocr_full_image, text_similarity, normalize_text
 
 
@@ -29,7 +29,7 @@ def deduplicate_elements(elements: list, iou_threshold: float = 0.4) -> list:
     Merge overlapping detections. When two elements overlap significantly,
     keep the one with the higher confidence (UIA > OCR > OpenCV).
     """
-    source_priority = {'uia': 3, 'uia_worksheet_grid': 3, 'ocr': 2, 'winrt_ocr': 2, 'opencv': 1}
+    source_priority = {'uia': 3, 'uia_worksheet_grid': 3, 'uia_document_body': 3, 'ocr': 2, 'winrt_ocr': 2, 'opencv': 1}
     sorted_els = sorted(
         elements,
         key=lambda e: (source_priority.get(e.get('source', 'ocr'), 1), e.get('confidence', 0)),
@@ -146,16 +146,31 @@ def find_candidates_in_map(screen_map: dict, target_text: str, min_similarity: f
     """
     Search a ScreenMap for elements matching target_text with semantic aliases.
     """
+    app_name = screen_map.get('application', 'excel').lower()
+    win_bounds = screen_map.get('windowBounds', {'x': 0, 'y': 0, 'width': 1920, 'height': 1080})
+    win_y = win_bounds.get('y', 0)
+    win_h = win_bounds.get('height', 1080)
+
     target_norm = normalize_text(target_text)
     aliases = [target_norm]
-    for canon, alias_list in EXCEL_SEMANTIC_ALIASES.items():
-        if target_norm == canon or any(a in target_norm for a in alias_list):
+
+    # Pull app-specific aliases
+    app_table = ALL_APP_ALIASES.get(app_name, EXCEL_SEMANTIC_ALIASES)
+    for canon, alias_list in app_table.items():
+        if target_norm == canon or any(a in target_norm for a in alias_list) or any(target_norm in a for a in alias_list):
             aliases.extend([normalize_text(a) for a in alias_list])
+
+    # Also search global aliases
+    for other_table in ALL_APP_ALIASES.values():
+        for canon, alias_list in other_table.items():
+            if target_norm == canon or any(a in target_norm for a in alias_list):
+                aliases.extend([normalize_text(a) for a in alias_list])
 
     candidates = []
     for el in screen_map.get('elements', []):
         w = el.get('width', 0)
         h = el.get('height', 0)
+        y = el.get('y', 0)
         el_text = normalize_text(el.get('text', ''))
 
         # Skip giant containers / whole windows
@@ -169,8 +184,12 @@ def find_candidates_in_map(screen_map: dict, target_text: str, min_similarity: f
                 best_sim = sim
 
         if best_sim >= min_similarity:
-            candidate = {**el, 'similarity': best_sim}
-            candidate['score'] = round(el.get('confidence', 0.7) * best_sim, 3)
+            # Canva toolbar spatial preference: items in top 18% of window get a score bonus
+            score = el.get('confidence', 0.7) * best_sim
+            if app_name == 'canva' and (y < win_y + win_h * 0.18 or y < 160):
+                score = min(0.99, score + 0.10)
+
+            candidate = {**el, 'similarity': best_sim, 'score': round(score, 3)}
             candidates.append(candidate)
 
     candidates.sort(key=lambda c: c['score'], reverse=True)

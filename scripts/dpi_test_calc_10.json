@@ -1,0 +1,363 @@
+{
+  "dpi_scale": 1.5,
+  "dpi_percent": 150,
+  "timestamp": "2026-08-29T13:09:39.107948",
+  "trials_per_target": 10,
+  "apps_tested": [
+    "calculator"
+  ],
+  "summary": {
+    "calculator": {
+      "total_trials": 20,
+      "detected": 20,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.99,
+      "avg_latency_ms": 2.3,
+      "methods_used": [
+        "uia"
+      ]
+    }
+  },
+  "raw_results": [
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 0.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.1,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "5",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 180,
+        "y": 465,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.3,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    },
+    {
+      "app": "calculator",
+      "target": "Plus",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 420,
+        "y": 555,
+        "w": 112,
+        "h": 75
+      }
+    }
+  ]
+}

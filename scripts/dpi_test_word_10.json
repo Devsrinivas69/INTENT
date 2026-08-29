@@ -1,0 +1,533 @@
+{
+  "dpi_scale": 1.5,
+  "dpi_percent": 150,
+  "timestamp": "2026-08-29T13:09:37.042489",
+  "trials_per_target": 10,
+  "apps_tested": [
+    "word"
+  ],
+  "summary": {
+    "word": {
+      "total_trials": 30,
+      "detected": 30,
+      "detection_rate_pct": 100.0,
+      "avg_confidence": 0.99,
+      "avg_latency_ms": 4.7,
+      "methods_used": [
+        "uia"
+      ]
+    }
+  },
+  "raw_results": [
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 7.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 7.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Insert",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 192,
+        "y": 82,
+        "w": 102,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 2.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 1.8,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Home",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 90,
+        "y": 82,
+        "w": 96,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 1,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 3.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 2,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 3,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.2,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 4,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.9,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 5,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.7,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 6,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 6.6,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 7,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.5,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 8,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 4.3,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 9,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.0,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    },
+    {
+      "app": "word",
+      "target": "Review",
+      "trial": 10,
+      "detected": true,
+      "confidence": 0.99,
+      "method": "uia",
+      "latency_ms": 5.4,
+      "bounds_valid": true,
+      "error": null,
+      "bounds": {
+        "x": 480,
+        "y": 82,
+        "w": 105,
+        "h": 39
+      }
+    }
+  ]
+}
