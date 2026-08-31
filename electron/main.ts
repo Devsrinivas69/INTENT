@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen, desktopCapturer, session } from 'electron'
 import path, { join } from 'path'
-import { existsSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { spawn, execFileSync, ChildProcess } from 'child_process'
 import readline from 'readline'
@@ -26,16 +26,79 @@ function getPreloadPath(): string {
   return join(__dirname, 'preload.cjs')
 }
 
-// ─── Gemini AI Setup ─────────────────────────────────────────────────────────
+// ─── Resource Path Resolver (Packaged .exe & Dev Mode) ─────────────────────────
 
-let genAI: GoogleGenerativeAI | null = null
-
-if (process.env.GEMINI_API_KEY) {
-  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY.trim())
-  console.log('[INTENT] Gemini API initialized')
-} else {
-  console.warn('[INTENT] No GEMINI_API_KEY found — Local Detectors + Demo Fallback active')
+function getResourcePath(relativePath: string): string {
+  if (app.isPackaged) {
+    const resPath = join(process.resourcesPath, relativePath)
+    if (existsSync(resPath)) return resPath
+    const appPath = join(app.getAppPath(), relativePath)
+    if (existsSync(appPath)) return appPath
+  }
+  return join(app.getAppPath(), relativePath)
 }
+
+// ─── Persistent Settings Management ──────────────────────────────────────────
+
+interface IntentConfig {
+  geminiApiKey?: string
+  donationUrl?: string
+  lastExtensionId?: string
+}
+
+function getConfigPath(): string {
+  return join(app.getPath('userData'), 'intent_config.json')
+}
+
+function loadConfig(): IntentConfig {
+  try {
+    const configPath = getConfigPath()
+    if (existsSync(configPath)) {
+      const raw = readFileSync(configPath, 'utf8')
+      return JSON.parse(raw)
+    }
+  } catch (e) {
+    console.warn('[INTENT] Could not load stored config:', e)
+  }
+  return {}
+}
+
+function saveConfig(cfg: IntentConfig): void {
+  try {
+    const configPath = getConfigPath()
+    writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf8')
+  } catch (e) {
+    console.error('[INTENT] Failed to save config:', e)
+  }
+}
+
+let appConfig: IntentConfig = loadConfig()
+let genAI: GoogleGenerativeAI | null = null
+let activeGeminiKey = appConfig.geminiApiKey || process.env.GEMINI_API_KEY || ''
+
+function initGemini(key: string): boolean {
+  const trimmed = key ? key.trim() : ''
+  if (trimmed) {
+    try {
+      genAI = new GoogleGenerativeAI(trimmed)
+      activeGeminiKey = trimmed
+      console.log('[INTENT] Gemini API initialized with user/environment key')
+      return true
+    } catch (e) {
+      console.error('[INTENT] Failed to initialize Gemini API:', e)
+      genAI = null
+      activeGeminiKey = ''
+      return false
+    }
+  } else {
+    genAI = null
+    activeGeminiKey = ''
+    console.warn('[INTENT] No GEMINI_API_KEY found — Local Detectors + Demo Fallback active')
+    return false
+  }
+}
+
+initGemini(activeGeminiKey)
 
 // ─── Python Automation Helper (Windows UI Automation + OCR + OpenCV) ──────────
 
@@ -45,7 +108,7 @@ let reqId = 0
 const pendingRequests = new Map<number, (res: any) => void>()
 
 function initPythonHelper() {
-  const scriptPath = join(app.getAppPath(), 'python_helper/main.py')
+  const scriptPath = getResourcePath('python_helper/main.py')
   try {
     pythonProc = spawn('python', [scriptPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -138,7 +201,7 @@ let domBridgeConnected = false
 
 function ensureNativeHostInstalled() {
   try {
-    const scriptPath = join(app.getAppPath(), 'scripts/install_native_host.py')
+    const scriptPath = getResourcePath('scripts/install_native_host.py')
     execFileSync('python', [scriptPath], { 
       timeout: 8000, 
       windowsHide: true,
@@ -878,11 +941,12 @@ RESPONSE FORMAT (JSON ONLY):
   }
 })
 
-// ─── IPC: API Key Status ──────────────────────────────────────────────────────
+// ─── IPC: API Key & System Status ─────────────────────────────────────────────
 
 ipcMain.handle('app:api-status', () => {
   return {
-    hasKey: !!process.env.GEMINI_API_KEY,
+    hasKey: !!activeGeminiKey,
+    isCustomKey: !!appConfig.geminiApiKey,
     isDev,
     domBridgeConnected,
     pythonStartupReport,
@@ -893,10 +957,76 @@ ipcMain.handle('app:startup-report', () => {
   return pythonStartupReport
 })
 
+// ─── IPC: Settings & Gemini Key Management ────────────────────────────────────
+
+ipcMain.handle('settings:get', () => {
+  return {
+    hasKey: !!activeGeminiKey,
+    isCustomKey: !!appConfig.geminiApiKey,
+    maskedKey: activeGeminiKey ? `${activeGeminiKey.slice(0, 4)}••••••••${activeGeminiKey.slice(-4)}` : '',
+    rawKey: activeGeminiKey,
+    donationUrl: appConfig.donationUrl || 'https://buymeacoffee.com',
+  }
+})
+
+ipcMain.handle('settings:save-gemini-key', async (_, apiKey: string) => {
+  try {
+    const key = (apiKey || '').trim()
+    if (!key) {
+      delete appConfig.geminiApiKey
+      saveConfig(appConfig)
+      initGemini(process.env.GEMINI_API_KEY || '')
+      return { success: true, message: 'Custom key cleared. Default fallback active.' }
+    }
+
+    // Verify key with a quick lightweight call
+    const testGenAI = new GoogleGenerativeAI(key)
+    const model = testGenAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+      generationConfig: { maxOutputTokens: 2 },
+    })
+
+    // Key is verified! Persist and activate
+    appConfig.geminiApiKey = key
+    saveConfig(appConfig)
+    initGemini(key)
+    return { success: true, message: 'Gemini API Key verified and saved successfully!' }
+  } catch (err: any) {
+    console.warn('[INTENT] Gemini Key validation failed:', err)
+    return { success: false, error: err?.message || 'Invalid API Key. Please verify and try again.' }
+  }
+})
+
+ipcMain.handle('settings:test-gemini-key', async (_, apiKey: string) => {
+  try {
+    const key = (apiKey || '').trim()
+    if (!key) return { success: false, error: 'API key cannot be empty' }
+    const testGenAI = new GoogleGenerativeAI(key)
+    const model = testGenAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const res = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: 'respond with OK' }] }],
+      generationConfig: { maxOutputTokens: 5 },
+    })
+    return { success: true, response: res.response.text().trim() }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Verification test failed' }
+  }
+})
+
+ipcMain.handle('settings:clear-gemini-key', () => {
+  delete appConfig.geminiApiKey
+  saveConfig(appConfig)
+  initGemini(process.env.GEMINI_API_KEY || '')
+  return { success: true }
+})
+
+// ─── IPC: Setup & Extension Management ─────────────────────────────────────────
+
 ipcMain.handle('extension:update-id', async (_, extensionId: string) => {
   try {
     execFileSync('python', [
-      join(app.getAppPath(), 'scripts/update_extension_id.py'),
+      getResourcePath('scripts/update_extension_id.py'),
       extensionId
     ], { timeout: 5000, windowsHide: true, encoding: 'utf8' })
     return { success: true }
@@ -908,7 +1038,7 @@ ipcMain.handle('extension:update-id', async (_, extensionId: string) => {
 ipcMain.handle('setup:check-python-deps', async () => {
   try {
     const out = execFileSync('python', [
-      join(app.getAppPath(), 'scripts/check_python_deps.py')
+      getResourcePath('scripts/check_python_deps.py')
     ], { timeout: 25000, windowsHide: true, encoding: 'utf8' })
     return { success: true, output: out }
   } catch (e: any) {
@@ -919,7 +1049,7 @@ ipcMain.handle('setup:check-python-deps', async () => {
 ipcMain.handle('setup:install-native-host', async () => {
   try {
     const out = execFileSync('python', [
-      join(app.getAppPath(), 'scripts/install_native_host.py')
+      getResourcePath('scripts/install_native_host.py')
     ], { timeout: 10000, windowsHide: true, encoding: 'utf8' })
     return { success: true, output: out }
   } catch (e: any) {

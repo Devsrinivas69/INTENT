@@ -1,0 +1,87 @@
+name: Build .EXE Release & Deploy Website
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'release-and-deploy'
+  cancel-in-progress: false
+
+jobs:
+  # ─── Job 1: Build Windows .exe & Create GitHub Release ───────────────────────
+  build-windows-exe:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Build Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install Pillow
+
+      - name: Install NPM Dependencies
+        run: npm ci
+
+      - name: Build Web Assets & Electron App
+        run: npm run build
+
+      - name: Package Windows Installer (.exe)
+        run: npx electron-builder --win --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release and Upload .exe Asset
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            release/*.exe
+            release/*.blockmap
+            release/*.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+  # ─── Job 2: Deploy Landing Page to GitHub Pages ──────────────────────────────
+  deploy-website:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Website Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'website'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

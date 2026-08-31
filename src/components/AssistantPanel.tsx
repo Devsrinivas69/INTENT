@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ProgressIndicator } from './ProgressIndicator'
 import { VoiceControls } from './VoiceControls'
+import { SettingsModal } from './SettingsModal'
+import { SupportModal } from './SupportModal'
 import { intentEngine } from '../services/intentEngine'
 import { screenUnderstandingEngine } from '../services/screenUnderstandingEngine'
 import { coordinateMapper } from '../services/coordinateMapper'
@@ -73,8 +75,9 @@ export function AssistantPanel() {
   const [isListening, setIsListening] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [statusMessage, setStatusMessage] = useState<string>('')
   const [showDiagnostics, setShowDiagnostics] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showSupportModal, setShowSupportModal] = useState(false)
   const [autoAdvance, setAutoAdvance] = useState(false)
   const [verifyAttempts, setVerifyAttempts] = useState(0)
   const [apiStatus, setApiStatus] = useState<any>(null)
@@ -84,6 +87,8 @@ export function AssistantPanel() {
     return localStorage.getItem('intent_setup_complete') !== 'true'
   })
   const [wizardStep, setWizardStep] = useState<number>(1)
+  const [wizardApiKeyInput, setWizardApiKeyInput] = useState<string>('')
+  const [wizardApiKeySaved, setWizardApiKeySaved] = useState<boolean>(false)
   const [pythonDepsOk, setPythonDepsOk] = useState<boolean | null>(null)
   const [nativeHostOk, setNativeHostOk] = useState<boolean | null>(null)
   const [extensionIdInput, setExtensionIdInput] = useState<string>('')
@@ -92,15 +97,19 @@ export function AssistantPanel() {
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const handleRefreshApiStatus = useCallback(() => {
+    api?.getApiStatus?.().then((status: any) => {
+      if (status) setApiStatus(status)
+    })
+  }, [])
+
   // ── Sync display metrics & API status ──────────────────────────────────────
   useEffect(() => {
     api?.getDisplayInfo?.().then((info: any) => {
       if (info) coordinateMapper.setDisplayMeta(info)
     })
-    api?.getApiStatus?.().then((status: any) => {
-      if (status) setApiStatus(status)
-    })
-  }, [])
+    handleRefreshApiStatus()
+  }, [handleRefreshApiStatus])
 
   // ── Keyboard shortcut: Escape to close ─────────────────────────────────────
   useEffect(() => {
@@ -459,17 +468,31 @@ export function AssistantPanel() {
             <span className="text-white/50 text-[10px] font-mono uppercase tracking-widest">{state}</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 font-mono text-[10px]">
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="text-white/60 hover:text-white border border-white/20 hover:border-white px-1.5 py-0.5 rounded-[2px] transition-none"
+              title="Configure Google Gemini API Key"
+            >
+              {apiStatus?.isCustomKey ? '● KEY' : '⚙ KEY'}
+            </button>
+            <button
+              onClick={() => setShowSupportModal(true)}
+              className="text-white/60 hover:text-white border border-white/20 hover:border-white px-1.5 py-0.5 rounded-[2px] transition-none"
+              title="Support Developer / Fund AI Credits"
+            >
+              ☕ FUND
+            </button>
             <button
               onClick={() => setShowDiagnostics((d) => !d)}
-              className="text-white/40 hover:text-white text-[10px] font-mono px-1 transition-colors"
+              className="text-white/40 hover:text-white px-1 transition-none"
               title="Toggle Live Debug Diagnostics"
             >
               {showDiagnostics ? '▲' : '▼'} DBG
             </button>
             <button
               onClick={handleClose}
-              className="text-white/40 hover:text-white transition-colors text-sm font-mono leading-none px-1"
+              className="text-white/40 hover:text-white transition-none text-sm leading-none px-1"
               title="Close (Esc)"
             >
               ✕
@@ -477,7 +500,7 @@ export function AssistantPanel() {
           </div>
         </div>
 
-        {/* ── Diagnostics Drawer (Improvement 3: Live Collapsible [DBG] Panel) ─── */}
+        {/* ── Diagnostics Drawer (Live Collapsible [DBG] Panel) ─── */}
         {showDiagnostics && (
           <div className="no-drag border-b border-white/10 bg-white/[0.03] p-2.5 font-mono text-[9px] text-white/70 space-y-1 select-none max-h-56 overflow-y-auto">
             <div className="flex justify-between text-white font-semibold pb-0.5 border-b border-white/10">
@@ -537,33 +560,56 @@ export function AssistantPanel() {
               <div className="border border-white/20 bg-white/[0.02] p-3 rounded-[3px] space-y-2">
                 <div className="flex justify-between items-center text-white font-semibold pb-1 border-b border-white/10">
                   <span className="tracking-wider">FIRST-RUN SETUP WIZARD</span>
-                  <span className="text-[10px] text-white/50">STEP {wizardStep} OF 4</span>
+                  <span className="text-[10px] text-white/50">STEP {wizardStep} OF 5</span>
                 </div>
 
                 {wizardStep === 1 && (
-                  <div className="space-y-3 font-sans text-xs">
-                    <p className="text-white/80">Step 1 — Verify Python & Computer Vision Runtime:</p>
-                    <div className="p-2 border border-white/10 bg-black/30 rounded text-[10px] font-mono space-y-1">
-                      <div className="text-emerald-400">✓ UI Automation (UIA)</div>
-                      <div className="text-emerald-400">✓ Windows OCR (WinRT Media.Ocr)</div>
-                      <div className="text-emerald-400">✓ OpenCV & MSS Desktop Capture</div>
-                      <div className="text-emerald-400">✓ WebSockets DOM Server</div>
+                  <div className="space-y-3 font-mono text-xs">
+                    <p className="text-white/80 font-bold uppercase tracking-wider">// Step 1 : Google Gemini API Key (BYOK)</p>
+                    <p className="text-white/60 text-[11px] leading-relaxed">
+                      INTENT is 100% free and local-first. Enter your free Gemini API key for natural language understanding and multi-modal screen verification.
+                    </p>
+                    <div className="space-y-1">
+                      <input
+                        type="password"
+                        value={wizardApiKeyInput}
+                        onChange={(e) => setWizardApiKeyInput(e.target.value.trim())}
+                        placeholder="Paste Gemini API Key (AIzaSy...)"
+                        className="w-full bg-black/60 border border-white/40 rounded px-2.5 py-1.5 text-xs text-white font-mono placeholder-white/30 focus:border-white focus:outline-none"
+                      />
+                      <div className="text-[9px] text-white/50 flex justify-between">
+                        <span>Free at aistudio.google.com</span>
+                        {wizardApiKeySaved && <span className="text-white font-bold">SAVED ✓</span>}
+                      </div>
                     </div>
-                    <button
-                      onClick={() => setWizardStep(2)}
-                      className="w-full btn-white py-2 text-xs font-mono font-semibold uppercase rounded-[3px]"
-                    >
-                      CONTINUE TO STEP 2 →
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          if (wizardApiKeyInput) {
+                            const res = await api?.saveGeminiKey?.(wizardApiKeyInput)
+                            if (res?.success) {
+                              setWizardApiKeySaved(true)
+                              handleRefreshApiStatus()
+                            }
+                          }
+                          setWizardStep(2)
+                        }}
+                        className="flex-1 btn-white py-2 text-xs font-mono font-semibold uppercase rounded-[3px]"
+                      >
+                        {wizardApiKeyInput ? 'SAVE & CONTINUE →' : 'SKIP FOR NOW →'}
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 {wizardStep === 2 && (
                   <div className="space-y-3 font-sans text-xs">
-                    <p className="text-white/80">Step 2 — Register Chrome Native Messaging Host:</p>
-                    <div className="p-2 border border-white/10 bg-black/30 rounded text-[10px] font-mono space-y-1 text-emerald-400">
-                      ✓ Manifest: python_helper/com.intent.native_host.json<br />
-                      ✓ Registry: HKCU\Software\Google\Chrome\NativeMessagingHosts
+                    <p className="text-white/80 font-mono font-bold uppercase">// Step 2 : Verify Local Automation Runtime</p>
+                    <div className="p-2 border border-white/10 bg-black/30 rounded text-[10px] font-mono space-y-1">
+                      <div className="text-emerald-400">✓ UI Automation (UIA)</div>
+                      <div className="text-emerald-400">✓ Windows OCR (WinRT Media.Ocr)</div>
+                      <div className="text-emerald-400">✓ OpenCV & MSS Desktop Capture</div>
+                      <div className="text-emerald-400">✓ WebSockets DOM Server</div>
                     </div>
                     <button
                       onClick={() => setWizardStep(3)}
@@ -576,7 +622,23 @@ export function AssistantPanel() {
 
                 {wizardStep === 3 && (
                   <div className="space-y-3 font-sans text-xs">
-                    <p className="text-white/80 font-semibold">Step 3 — Load Browser Extension in Chrome:</p>
+                    <p className="text-white/80 font-mono font-bold uppercase">// Step 3 : Chrome Native Messaging Host</p>
+                    <div className="p-2 border border-white/10 bg-black/30 rounded text-[10px] font-mono space-y-1 text-emerald-400">
+                      ✓ Manifest: python_helper/com.intent.native_host.json<br />
+                      ✓ Registry: HKCU\Software\Google\Chrome\NativeMessagingHosts
+                    </div>
+                    <button
+                      onClick={() => setWizardStep(4)}
+                      className="w-full btn-white py-2 text-xs font-mono font-semibold uppercase rounded-[3px]"
+                    >
+                      CONTINUE TO STEP 4 →
+                    </button>
+                  </div>
+                )}
+
+                {wizardStep === 4 && (
+                  <div className="space-y-3 font-sans text-xs">
+                    <p className="text-white/80 font-mono font-bold uppercase">// Step 4 : Load Chrome Extension</p>
                     <div className="p-2 border border-white/10 bg-black/30 rounded text-[10px] font-mono space-y-1 text-white/70">
                       1. Open Chrome → <span className="text-white underline">chrome://extensions/</span><br />
                       2. Enable "Developer mode" toggle (top right)<br />
@@ -599,7 +661,7 @@ export function AssistantPanel() {
                             await api?.updateExtensionId?.(extensionIdInput)
                             setExtensionIdSaved(true)
                           }
-                          setWizardStep(4)
+                          setWizardStep(5)
                         }}
                         className="w-full btn-white py-2 text-xs font-mono font-semibold uppercase rounded-[3px]"
                       >
@@ -609,7 +671,7 @@ export function AssistantPanel() {
                   </div>
                 )}
 
-                {wizardStep === 4 && (
+                {wizardStep === 5 && (
                   <div className="space-y-3 font-sans text-xs text-center py-2">
                     <div className="w-10 h-10 rounded-full border border-white/60 mx-auto flex items-center justify-center text-emerald-400 font-mono text-base">
                       ✓
@@ -1029,6 +1091,17 @@ export function AssistantPanel() {
           )}
         </div>
       </div>
+
+      {/* ── Settings & Support Modals ────────────────────────────────────── */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        onKeyUpdated={handleRefreshApiStatus}
+      />
+      <SupportModal
+        isOpen={showSupportModal}
+        onClose={() => setShowSupportModal(false)}
+      />
     </motion.div>
   )
 }

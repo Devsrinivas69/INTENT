@@ -69,12 +69,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('dom-bridge:snapshot', handler)
   },
 
-  // ── App Status & Setup ─────────────────────────────────────────────────────
-  getApiStatus: (): Promise<{ hasKey: boolean; isDev: boolean; domBridgeConnected?: boolean; pythonStartupReport?: any }> =>
+  // ── App Status & Settings ──────────────────────────────────────────────────
+  getApiStatus: (): Promise<{ hasKey: boolean; isCustomKey?: boolean; isDev: boolean; domBridgeConnected?: boolean; pythonStartupReport?: any }> =>
     ipcRenderer.invoke('app:api-status'),
 
   getStartupReport: (): Promise<any> =>
     ipcRenderer.invoke('app:startup-report'),
+
+  getSettings: (): Promise<{ hasKey: boolean; isCustomKey: boolean; maskedKey: string; rawKey: string; donationUrl: string }> =>
+    ipcRenderer.invoke('settings:get'),
+
+  saveGeminiKey: (apiKey: string): Promise<{ success: boolean; message?: string; error?: string }> =>
+    ipcRenderer.invoke('settings:save-gemini-key', apiKey),
+
+  testGeminiKey: (apiKey: string): Promise<{ success: boolean; response?: string; error?: string }> =>
+    ipcRenderer.invoke('settings:test-gemini-key', apiKey),
+
+  clearGeminiKey: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('settings:clear-gemini-key'),
 
   updateExtensionId: (extensionId: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('extension:update-id', extensionId),

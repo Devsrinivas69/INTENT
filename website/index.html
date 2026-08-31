@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INTENT // Desktop Intent Automation Engine</title>
+  <meta name="description" content="Tell your computer what you want. We'll show you how. Open-source, local-first desktop guidance for Windows.">
+  <!-- Monospace / Typewriter Typography from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Masthead Navigation -->
+  <header class="masthead">
+    <div class="container masthead-inner">
+      <div class="brand">
+        <span class="symbol">■</span>
+        <span class="brand-name">INTENT</span>
+        <span class="tag">DESKTOP_ENGINE [v1.0.0]</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#manifesto">[ MANIFESTO ]</a>
+        <a href="#workflow">[ DEMO ]</a>
+        <a href="#matrix">[ APPS ]</a>
+        <a href="#byok">[ FREE API KEY ]</a>
+        <a href="#support">[ FUND DEVELOPER ]</a>
+        <a href="#download" class="nav-btn">[ DOWNLOAD .EXE ]</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="container">
+        <div class="hero-meta">
+          <span>// ISSUE 01 &bull; VOLUME 2026</span>
+          <span>WINDOWS 10 / 11 64-BIT</span>
+          <span>STATUS: STABLE RELEASE</span>
+        </div>
+
+        <div class="hero-title-box">
+          <h1 class="hero-title">
+            TELL YOUR COMPUTER WHAT YOU WANT.<br>
+            WE'LL SHOW YOU HOW.
+          </h1>
+        </div>
+
+        <p class="hero-lead">
+          The first intent-driven desktop guidance assistant. It finds buttons, tools, and menu options across Canva, Excel, Word, PowerPoint, and Chrome — locking onto the exact coordinates and guiding your hands without hijacking your mouse.
+        </p>
+
+        <div class="hero-cta-group">
+          <a href="https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe" class="btn btn-solid" id="downloadExeBtn">
+            [ DOWNLOAD INTENT SETUP .EXE &mdash; 78 MB ]
+          </a>
+          <a href="#byok" class="btn btn-outline">
+            [ BRING YOUR OWN FREE KEY (BYOK) ]
+          </a>
+          <a href="https://github.com/Devsrinivas69/INTENT" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">
+            [ VIEW REPO ON GITHUB ↗ ]
+          </a>
+        </div>
+
+        <div class="specs-bar">
+          <div class="spec-item">
+            <span class="spec-label">RUNTIME:</span>
+            <span class="spec-val">Local UIA + WinRT OCR + OpenCV</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">AI MODEL:</span>
+            <span class="spec-val">Google Gemini 1.5/2.0 Flash (BYOK)</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">COST:</span>
+            <span class="spec-val">$0.00 FOREVER (No Subscription)</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">LICENSE:</span>
+            <span class="spec-val">MIT Open Source</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Terminal & Live Workflow Demo -->
+    <section class="demo-section" id="workflow">
+      <div class="container">
+        <div class="section-header">
+          <h2>// 01. INTERACTIVE ENGINE SIMULATION</h2>
+          <p class="section-desc">Select an intent below to inspect the step-by-step physical coordinate resolution and multi-modal state verification:</p>
+        </div>
+
+        <div class="demo-tabs">
+          <button class="demo-tab active" data-scenario="canva">
+            [ SCENARIO A: CANVA BG REMOVAL ]
+          </button>
+          <button class="demo-tab" data-scenario="excel">
+            [ SCENARIO B: EXCEL AUTOSUM ]
+          </button>
+          <button class="demo-tab" data-scenario="word">
+            [ SCENARIO C: WORD HEADING 1 ]
+          </button>
+          <button class="demo-tab" data-scenario="chrome">
+            [ SCENARIO D: CHROME NEW TAB ]
+          </button>
+        </div>
+
+        <div class="terminal-box">
+          <div class="terminal-bar">
+            <span class="term-dot"></span>
+            <span class="term-title">INTENT_KERNEL // TELEMETRY & PHYSICAL GUIDANCE MONITOR</span>
+            <span class="term-status" id="termStatus">STATUS: READY</span>
+          </div>
+          <div class="terminal-body" id="terminalOutput">
+            <!-- Simulated via script.js -->
+          </div>
+          <div class="terminal-footer">
+            <span class="prompt-symbol">&gt;</span>
+            <span id="currentPromptText" class="prompt-text">user: "remove the background of this photo in canva"</span>
+            <button id="rerunDemoBtn" class="term-replay-btn">[ REPLAY STEP SEQUENCE ]</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Manifesto & BYOK Section -->
+    <section class="manifesto-section" id="manifesto">
+      <div class="container">
+        <div class="section-header">
+          <h2>// 02. THE ZERO-SUBSCRIPTION MANIFESTO</h2>
+          <p class="section-desc">Why we do not charge monthly fees and never touch your credentials:</p>
+        </div>
+
+        <div class="manifesto-grid">
+          <div class="manifesto-card">
+            <div class="card-num">01 / LOCAL-FIRST</div>
+            <h3>ZERO SERVER HOPS</h3>
+            <p>
+              95% of UI coordinate detection happens locally on your CPU using Windows UI Automation and native WinRT Media.Ocr. Your screen bitmaps are processed on-device and never sent to a private server.
+            </p>
+          </div>
+
+          <div class="manifesto-card">
+            <div class="card-num">02 / BRING YOUR OWN KEY</div>
+            <h3>FREE GOOGLE GEMINI TIER</h3>
+            <p>
+              Google AI Studio provides 15 RPM (Requests Per Minute) 100% free with no credit card required. You paste your own key into INTENT settings, keeping your cost permanently at $0.00.
+            </p>
+          </div>
+
+          <div class="manifesto-card">
+            <div class="card-num">03 / NON-INVASIVE</div>
+            <h3>NO MOUSE HIJACKING</h3>
+            <p>
+              Traditional robotic process automation (RPA) snatches your mouse and makes mistakes. INTENT projects a physical holographic target lock on your display so you stay in total control.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Supported Applications Matrix -->
+    <section class="matrix-section" id="matrix">
+      <div class="container">
+        <div class="section-header">
+          <h2>// 03. APPLICATION CAPABILITY MATRIX</h2>
+          <p class="section-desc">Supported workflows, coordinate extraction engines, and verification rules:</p>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="editorial-table">
+            <thead>
+              <tr>
+                <th>TARGET APPLICATION</th>
+                <th>SUPPORTED ACTIONS</th>
+                <th>DETECTION TIER</th>
+                <th>STATE VERIFICATION</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>CANVA (DESKTOP / WEB)</strong></td>
+                <td>Remove Background, Add Animation, Resize, Add Text, Export</td>
+                <td>UIA + Chrome DOM Bridge + OCR</td>
+                <td>Visual Diff + Side-panel Detection</td>
+              </tr>
+              <tr>
+                <td><strong>MICROSOFT EXCEL</strong></td>
+                <td>AutoSum, Create Charts, Format Bold/Fill, Freeze Top Row</td>
+                <td>Windows UIA Native Tree + Coordinate Map</td>
+                <td>Cell Grid State Verification</td>
+              </tr>
+              <tr>
+                <td><strong>MICROSOFT WORD</strong></td>
+                <td>Heading 1 Styling, Insert 3x3 Table, Spell Check</td>
+                <td>Ribbon UI Automation + WinRT OCR</td>
+                <td>Paragraph Format Confirmation</td>
+              </tr>
+              <tr>
+                <td><strong>MICROSOFT POWERPOINT</strong></td>
+                <td>Add Slide, Slide Transitions, Insert Picture</td>
+                <td>Office Ribbon UIA Hierarchy</td>
+                <td>Thumbnail Deck Diff</td>
+              </tr>
+              <tr>
+                <td><strong>GOOGLE CHROME</strong></td>
+                <td>Open Tab, Bookmark Page, Find in Page, Clear History</td>
+                <td>Chrome Native Messaging Host</td>
+                <td>Tab URL & DOM Snapshot</td>
+              </tr>
+              <tr>
+                <td><strong>WINDOWS UTILITIES</strong></td>
+                <td>Notepad (Find/Replace, Save As), Calculator (Arithmetic)</td>
+                <td>Native Win32 & UIA API</td>
+                <td>Window Title & Display Buffer</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- How to Get a Free Gemini API Key -->
+    <section class="byok-section" id="byok">
+      <div class="container">
+        <div class="section-header">
+          <h2>// 04. SETUP IN 3 STEPS (BRING YOUR OWN KEY)</h2>
+          <p class="section-desc">How anyone can set up INTENT in under 60 seconds at zero cost:</p>
+        </div>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-badge">STEP 1</div>
+            <h3>DOWNLOAD INSTALLER</h3>
+            <p>Download and run <code class="mono-code">INTENT Setup 1.0.0.exe</code>. The installer registers shortcuts and native host components in user space.</p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">STEP 2</div>
+            <h3>OBTAIN FREE GEMINI KEY</h3>
+            <p>Visit <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="link-underlined">Google AI Studio ↗</a>. Sign in with any Google account and click &quot;Create API Key&quot;. Free forever, no billing required.</p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">STEP 3</div>
+            <h3>PASTE &amp; EXECUTE</h3>
+            <p>Open INTENT, click <code class="mono-code">[KEY ⚙]</code>, paste your key, and press <code class="mono-code">Alt + Space</code>. Say or type your intent to begin!</p>
+          </div>
+        </div>
+
+        <div class="byok-callout">
+          <div class="callout-title">// PRIVACY GUARANTEE</div>
+          <p>
+            Your API key is saved locally in your Windows User Profile (<code class="mono-code">%APPDATA%\intent-desktop\intent_config.json</code>). It is never sent to our servers, never logged to third parties, and never shared.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Support / Fund Developer AI Credits -->
+    <section class="support-section" id="support">
+      <div class="container">
+        <div class="section-header">
+          <h2>// 05. OPTIONAL : FUND DEVELOPER AI CREDITS</h2>
+          <p class="section-desc">
+            INTENT is completely free. If INTENT saves your team time, consider sponsoring compute credits for vision benchmark datasets and ongoing open-source development:
+          </p>
+        </div>
+
+        <div class="tier-grid">
+          <div class="tier-card">
+            <div class="tier-top">
+              <span class="tier-name">COFFEE BOOST</span>
+              <span class="tier-price">$3.00</span>
+            </div>
+            <p class="tier-desc">Fuel late-night open-source maintenance, bug fixes, and Windows API updates.</p>
+            <div class="tier-action">
+              <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-block">
+                [ SPONSOR $3 VIA BUY ME A COFFEE ↗ ]
+              </a>
+            </div>
+          </div>
+
+          <div class="tier-card featured">
+            <div class="tier-badge">[ RECOMMENDED SUPPORT ]</div>
+            <div class="tier-top">
+              <span class="tier-name">AI COMPUTE CREDITS</span>
+              <span class="tier-price">$10.00</span>
+            </div>
+            <p class="tier-desc">Fund 10,000+ multi-modal vision prompt evaluations and UI ontology dataset expansion.</p>
+            <div class="tier-action">
+              <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" class="btn btn-solid btn-block">
+                [ FUND $10 COMPUTE CREDITS ↗ ]
+              </a>
+            </div>
+          </div>
+
+          <div class="tier-card">
+            <div class="tier-top">
+              <span class="tier-name">CORE PROJECT SPONSOR</span>
+              <span class="tier-price">$25.00</span>
+            </div>
+            <p class="tier-desc">Sponsor core engineering, prioritized feature implementation, and direct Discord access.</p>
+            <div class="tier-action">
+              <a href="https://github.com/sponsors" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-block">
+                [ SPONSOR $25 ON GITHUB ↗ ]
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="custom-support-bar">
+          <span>Alternative platforms:</span>
+          <a href="https://ko-fi.com" target="_blank" rel="noopener noreferrer">[ KO-FI ↗ ]</a>
+          <span>&bull;</span>
+          <a href="https://github.com/sponsors" target="_blank" rel="noopener noreferrer">[ GITHUB SPONSORS ↗ ]</a>
+          <span>&bull;</span>
+          <a href="https://paypal.me" target="_blank" rel="noopener noreferrer">[ PAYPAL ↗ ]</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Download Section -->
+    <section class="download-section" id="download">
+      <div class="container">
+        <div class="download-box">
+          <div class="download-header">
+            <h2>// GET INTENT FOR WINDOWS</h2>
+            <p>Version 1.0.0 &bull; 64-bit NSIS Installer &bull; SHA-256 Verified</p>
+          </div>
+
+          <div class="download-buttons">
+            <a href="https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe" class="btn btn-solid btn-lg">
+              [ DOWNLOAD INTENT SETUP (.EXE) ]
+            </a>
+            <a href="https://github.com/Devsrinivas69/INTENT/releases/latest" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-lg">
+              [ PORTABLE ZIP &amp; RELEASE NOTES ↗ ]
+            </a>
+          </div>
+
+          <div class="system-reqs">
+            <div class="req-title">SYSTEM REQUIREMENTS:</div>
+            <ul class="req-list">
+              <li>&bull; OS: Windows 10 (1903+) or Windows 11 (64-bit)</li>
+              <li>&bull; Python: Python 3.9+ (optional for native OCR/UIA engine)</li>
+              <li>&bull; Display: Works across 100%, 125%, and 150% DPI scaling</li>
+              <li>&bull; Memory: 4GB RAM minimum (zero GPU requirement)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section">
+      <div class="container">
+        <div class="section-header">
+          <h2>// 06. FREQUENTLY ASKED QUESTIONS</h2>
+        </div>
+
+        <div class="faq-list">
+          <div class="faq-item">
+            <div class="faq-q">[Q] Does INTENT take control of my mouse?</div>
+            <div class="faq-a">[A] No. INTENT never clicks for you. It highlights the exact button with an animated holographic box and displays instructions, so you stay in total control.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">[Q] Is the Gemini API key really free?</div>
+            <div class="faq-a">[A] Yes. Google AI Studio offers a free tier (15 requests per minute) that never expires and requires no credit card.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">[Q] How do I host this website myself?</div>
+            <div class="faq-a">[A] Run `npm run website` for local hosting on localhost, or push to GitHub and enable GitHub Pages for 100% free hosting with zero maintenance.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Masthead Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-left">
+        <span class="symbol">■</span>
+        <span>INTENT // ARCHITECTURE BY SRINIVAS REDDY</span>
+      </div>
+      <div class="footer-center">
+        <span>RELEASED UNDER MIT LICENSE</span>
+      </div>
+      <div class="footer-right">
+        <a href="https://github.com/Devsrinivas69/INTENT" target="_blank" rel="noopener noreferrer">[ GITHUB ]</a>
+        <a href="#download">[ DOWNLOAD ]</a>
+        <a href="#manifesto">[ TOP ↑ ]</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
