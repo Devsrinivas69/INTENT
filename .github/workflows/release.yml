@@ -1,24 +1,15 @@
-name: Build .EXE Release & Deploy Website
+name: Build and Release .EXE
 
 on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: 'release-and-deploy'
-  cancel-in-progress: false
 
 jobs:
-  # ─── Job 1: Build Windows .exe & Create GitHub Release ───────────────────────
   build-windows-exe:
     runs-on: windows-latest
     steps:
@@ -63,25 +54,3 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-
-  # ─── Job 2: Deploy Landing Page to GitHub Pages ──────────────────────────────
-  deploy-website:
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Website Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: 'website'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
