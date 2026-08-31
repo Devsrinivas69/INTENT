@@ -1,14 +1,38 @@
 import { app, BrowserWindow, ipcMain, screen, desktopCapturer, session } from 'electron'
 import path, { join } from 'path'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { spawn, execFileSync, ChildProcess } from 'child_process'
+import { spawn, execSync, ChildProcess } from 'child_process'
 import readline from 'readline'
 import dotenv from 'dotenv'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { WebSocketServer, WebSocket } from 'ws'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// ─── Persistent Startup Crash Log ─────────────────────────────────────────────
+const LOG_DIR = join(
+  process.env.APPDATA || process.env.USERPROFILE || 'C:\\',
+  'INTENT-Logs'
+)
+function startupLog(msg: string) {
+  try {
+    mkdirSync(LOG_DIR, { recursive: true })
+    appendFileSync(join(LOG_DIR, 'startup.log'), `[${new Date().toISOString()}] ${msg}\n`)
+  } catch {}
+}
+startupLog('=== INTENT STARTING ===')
+startupLog(`Platform: ${process.platform} ${process.arch}`)
+startupLog(`Node: ${process.versions.node}`)
+startupLog(`CWD: ${process.cwd()}`)
+startupLog(`Exe: ${process.execPath}`)
+
+process.on('uncaughtException', (err) => {
+  startupLog(`UNCAUGHT EXCEPTION: ${err.stack || err.message}`)
+})
+process.on('unhandledRejection', (reason) => {
+  startupLog(`UNHANDLED REJECTION: ${reason}`)
+})
 
 // Load environment variables
 dotenv.config()
@@ -107,10 +131,55 @@ let pythonStartupReport: Record<string, any> | null = null
 let reqId = 0
 const pendingRequests = new Map<number, (res: any) => void>()
 
+function findPython(): string {
+  const candidates = [
+    process.env.PYTHON_PATH,
+    'python',
+    'python3',
+    'py',
+    `${process.env.LOCALAPPDATA}\\Programs\\Python\\Python313\\python.exe`,
+    `${process.env.LOCALAPPDATA}\\Programs\\Python\\Python312\\python.exe`,
+    `${process.env.LOCALAPPDATA}\\Programs\\Python\\Python311\\python.exe`,
+    `${process.env.LOCALAPPDATA}\\Programs\\Python\\Python310\\python.exe`,
+    `${process.env.LOCALAPPDATA}\\Programs\\Python\\Python39\\python.exe`,
+    `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\Python\\Python313\\python.exe`,
+    `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\Python\\Python312\\python.exe`,
+    `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\Python\\Python311\\python.exe`,
+    `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\Python\\Python310\\python.exe`,
+    'C:\\Python313\\python.exe',
+    'C:\\Python312\\python.exe',
+    'C:\\Python311\\python.exe',
+    'C:\\Python310\\python.exe',
+    'C:\\Python39\\python.exe',
+  ].filter(Boolean) as string[]
+
+  for (const candidate of candidates) {
+    try {
+      const result = execSync(`"${candidate}" --version`, {
+        timeout: 3000, windowsHide: true, encoding: 'utf8', env: { ...process.env }
+      })
+      if (result.includes('Python 3')) {
+        startupLog(`Python found: ${candidate}`)
+        return candidate
+      }
+    } catch {}
+  }
+  // Last resort: where python
+  try {
+    const wp = execSync('where python', { timeout: 3000, windowsHide: true, encoding: 'utf8' })
+      .trim().split('\n')[0].trim()
+    if (wp && wp.endsWith('.exe')) { startupLog(`Python (where): ${wp}`); return wp }
+  } catch {}
+  startupLog('Python NOT found — falling back to "python"')
+  return 'python'
+}
+
 function initPythonHelper() {
   const scriptPath = getResourcePath('python_helper/main.py')
+  const pythonExe = findPython()
+  startupLog(`Spawning python helper: ${pythonExe} ${scriptPath}`)
   try {
-    pythonProc = spawn('python', [scriptPath], {
+    pythonProc = spawn(pythonExe, [scriptPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     })
@@ -202,14 +271,17 @@ let domBridgeConnected = false
 function ensureNativeHostInstalled() {
   try {
     const scriptPath = getResourcePath('scripts/install_native_host.py')
-    execFileSync('python', [scriptPath], { 
+    const pyExe = findPython()
+    execSync(`"${pyExe}" "${scriptPath}"`, { 
       timeout: 8000, 
       windowsHide: true,
       encoding: 'utf8'
     })
     console.log('[INTENT] Native messaging host verified/installed.')
+    startupLog('Native host installed OK')
   } catch (e) {
     console.warn('[INTENT] Native host install failed (non-critical):', e)
+    startupLog(`Native host install failed (non-critical): ${e}`)
   }
 }
 
@@ -317,11 +389,20 @@ function createFloatingWindow() {
       preload: getPreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false,
     },
   })
 
   floatingWin.setAlwaysOnTop(true, 'screen-saver')
-  floatingWin.loadURL(getURL('index.html'))
+  const url = getURL('index.html')
+  startupLog(`Loading floatingWin: ${url}`)
+  floatingWin.loadURL(url)
+  floatingWin.webContents.on('render-process-gone', (_e, details) => {
+    startupLog(`floatingWin renderer gone: ${details.reason} exitCode=${details.exitCode}`)
+  })
+  floatingWin.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    startupLog(`floatingWin load failed: ${code} ${desc} ${url}`)
+  })
   floatingWin.on('closed', () => { floatingWin = null })
 }
 
@@ -345,11 +426,20 @@ function createPanelWindow() {
       preload: getPreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false,
     },
   })
 
   panelWin.setAlwaysOnTop(true, 'screen-saver')
-  panelWin.loadURL(getURL('panel.html'))
+  const url = getURL('panel.html')
+  startupLog(`Loading panelWin: ${url}`)
+  panelWin.loadURL(url)
+  panelWin.webContents.on('render-process-gone', (_e, details) => {
+    startupLog(`panelWin renderer gone: ${details.reason} exitCode=${details.exitCode}`)
+  })
+  panelWin.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    startupLog(`panelWin load failed: ${code} ${desc} ${url}`)
+  })
   panelWin.on('closed', () => { panelWin = null })
 }
 
@@ -378,18 +468,35 @@ function createOverlayWindow() {
       preload: getPreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false,
     },
   })
 
   overlayWin.setAlwaysOnTop(true, 'screen-saver')
   overlayWin.setIgnoreMouseEvents(true, { forward: true })
-  overlayWin.loadURL(getURL('overlay.html'))
+  const url = getURL('overlay.html')
+  startupLog(`Loading overlayWin: ${url}`)
+  overlayWin.loadURL(url)
+  overlayWin.webContents.on('render-process-gone', (_e, details) => {
+    startupLog(`overlayWin renderer gone: ${details.reason} exitCode=${details.exitCode}`)
+  })
+  overlayWin.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    startupLog(`overlayWin load failed: ${code} ${desc} ${url}`)
+  })
   overlayWin.on('closed', () => { overlayWin = null })
 }
 
 // ─── App Lifecycle ───────────────────────────────────────────────────────────
 
+app.commandLine.appendSwitch('disable-gpu-sandbox')
+app.commandLine.appendSwitch('no-sandbox')
+
+app.on('gpu-process-crashed', (_e, killed) => {
+  startupLog(`GPU process crashed, killed=${killed}`)
+})
+
 app.whenReady().then(async () => {
+  startupLog('app.whenReady fired')
   ensureNativeHostInstalled()
   initPythonHelper()
   initDomBridgeServer()
@@ -405,6 +512,7 @@ app.whenReady().then(async () => {
   createOverlayWindow()
   createPanelWindow()
   createFloatingWindow()
+  startupLog('All windows created')
 })
 
 app.on('window-all-closed', () => {

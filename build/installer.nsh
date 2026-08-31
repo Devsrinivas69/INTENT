@@ -1,18 +1,9 @@
 !macro customInstall
-  ; Check Python installation
-  nsExec::ExecToLog 'python --version'
+  ; Register native messaging host only (fast, safe)
+  ; Python deps are installed at first-run by the app itself
+  nsExec::ExecToStack 'python "$INSTDIR\resources\scripts\install_native_host.py"'
   Pop $0
-  ${If} $0 != 0
-    MessageBox MB_OK "Python is required but not found. Please install Python 3.9+ from python.org"
-  ${EndIf}
-
-  ; Install Python dependencies
-  nsExec::ExecToLog 'python -m pip install uiautomation pywin32 winrt-Windows.Media.Ocr winrt-Windows.Globalization opencv-python mss Pillow websockets'
-  
-  ; Register native messaging host
-  nsExec::ExecToLog 'python "$INSTDIR\resources\scripts\install_native_host.py"'
-  
-  DetailPrint "INTENT native components installed successfully."
+  Pop $1
 !macroend
 
 !macro customUnInstall
