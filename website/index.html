@@ -26,7 +26,7 @@
         <a href="#workflow">[ DEMO ]</a>
         <a href="#matrix">[ APPS ]</a>
         <a href="#byok">[ FREE API KEY ]</a>
-        <a href="#support">[ FUND DEVELOPER ]</a>
+        <a href="#support" id="navFundDev">[ FUND DEVELOPER ]</a>
         <a href="#download" class="nav-btn">[ DOWNLOAD .EXE ]</a>
       </nav>
     </div>
@@ -275,13 +275,16 @@
           <div class="tier-card">
             <div class="tier-top">
               <span class="tier-name">COFFEE BOOST</span>
-              <span class="tier-price">$3.00</span>
+              <div class="tier-price-box">
+                <span class="tier-price">$3.00</span>
+                <span class="tier-subprice">approx. ₹250</span>
+              </div>
             </div>
             <p class="tier-desc">Fuel late-night open-source maintenance, bug fixes, and Windows API updates.</p>
             <div class="tier-action">
-              <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-block">
-                [ SPONSOR $3 VIA BUY ME A COFFEE ↗ ]
-              </a>
+              <button type="button" class="btn btn-outline btn-block fund-tier-btn" data-tier="coffee" data-title="COFFEE BOOST" data-usd="3.00" data-inr="250">
+                [ FUND $3 / ₹250 VIA UPI ↗ ]
+              </button>
             </div>
           </div>
 
@@ -289,37 +292,43 @@
             <div class="tier-badge">[ RECOMMENDED SUPPORT ]</div>
             <div class="tier-top">
               <span class="tier-name">AI COMPUTE CREDITS</span>
-              <span class="tier-price">$10.00</span>
+              <div class="tier-price-box">
+                <span class="tier-price">$10.00</span>
+                <span class="tier-subprice">approx. ₹800</span>
+              </div>
             </div>
             <p class="tier-desc">Fund 10,000+ multi-modal vision prompt evaluations and UI ontology dataset expansion.</p>
             <div class="tier-action">
-              <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" class="btn btn-solid btn-block">
-                [ FUND $10 COMPUTE CREDITS ↗ ]
-              </a>
+              <button type="button" class="btn btn-solid btn-block fund-tier-btn" data-tier="compute" data-title="AI COMPUTE CREDITS" data-usd="10.00" data-inr="800">
+                [ FUND $10 / ₹800 VIA UPI ↗ ]
+              </button>
             </div>
           </div>
 
           <div class="tier-card">
             <div class="tier-top">
               <span class="tier-name">CORE PROJECT SPONSOR</span>
-              <span class="tier-price">$25.00</span>
+              <div class="tier-price-box">
+                <span class="tier-price">$25.00</span>
+                <span class="tier-subprice">approx. ₹2,000</span>
+              </div>
             </div>
             <p class="tier-desc">Sponsor core engineering, prioritized feature implementation, and direct Discord access.</p>
             <div class="tier-action">
-              <a href="https://github.com/sponsors" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-block">
-                [ SPONSOR $25 ON GITHUB ↗ ]
-              </a>
+              <button type="button" class="btn btn-outline btn-block fund-tier-btn" data-tier="sponsor" data-title="CORE PROJECT SPONSOR" data-usd="25.00" data-inr="2000">
+                [ FUND $25 / ₹2,000 VIA UPI ↗ ]
+              </button>
             </div>
           </div>
         </div>
 
         <div class="custom-support-bar">
           <span>Alternative platforms:</span>
-          <a href="https://ko-fi.com" target="_blank" rel="noopener noreferrer">[ KO-FI ↗ ]</a>
+          <a href="https://buymeacoffee.com/devsrinivas69" target="_blank" rel="noopener noreferrer">[ BUY ME A COFFEE ↗ ]</a>
           <span>&bull;</span>
-          <a href="https://github.com/sponsors" target="_blank" rel="noopener noreferrer">[ GITHUB SPONSORS ↗ ]</a>
+          <a href="https://github.com/sponsors/Devsrinivas69" target="_blank" rel="noopener noreferrer">[ GITHUB SPONSORS ↗ ]</a>
           <span>&bull;</span>
-          <a href="https://paypal.me" target="_blank" rel="noopener noreferrer">[ PAYPAL ↗ ]</a>
+          <a href="upi://pay?pa=8088244385-2@ybl&pn=K%20H%20SRINIVASA%20REDDY&mc=0000&mode=02&purpose=00" class="direct-upi-trigger">[ INSTANT UPI REDIRECT ↗ ]</a>
         </div>
       </div>
     </section>
@@ -379,6 +388,55 @@
       </div>
     </section>
   </main>
+
+  <!-- Fund Developer / UPI Modal (NO Public QR Graphic) -->
+  <div id="fundModal" class="fund-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="fund-modal-overlay" id="fundModalOverlay"></div>
+    <div class="fund-modal-dialog">
+      <div class="modal-header">
+        <span class="modal-title">// FUND DEVELOPER &bull; UPI REDIRECTION</span>
+        <button type="button" class="modal-close-btn" id="closeFundModalBtn">[ ESC / CLOSE ]</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-status-box">
+          <div class="modal-status-tag" id="modalStatusTag">STATUS: REDIRECTING TO UPI APP...</div>
+          <p id="modalStatusDesc">Initiating payment intent on PhonePe, Google Pay, Paytm, or BHIM.</p>
+        </div>
+
+        <div class="payee-details-box">
+          <div class="payee-row">
+            <span class="payee-label">PAYEE NAME:</span>
+            <span class="payee-val">K H SRINIVASA REDDY</span>
+          </div>
+          <div class="payee-row">
+            <span class="payee-label">SELECTED TIER:</span>
+            <span class="payee-val" id="modalTierName">AI COMPUTE CREDITS</span>
+          </div>
+          <div class="payee-row">
+            <span class="payee-label">AMOUNT:</span>
+            <span class="payee-val" id="modalAmountVal">$10.00 (₹800)</span>
+          </div>
+          <div class="payee-row">
+            <span class="payee-label">UPI ID:</span>
+            <span class="payee-val mono-val" id="upiVpaText">8088244385-2@ybl</span>
+            <button type="button" class="btn-copy" id="copyUpiBtn">[ COPY UPI ID ]</button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <a href="upi://pay?pa=8088244385-2@ybl&pn=K%20H%20SRINIVASA%20REDDY&mc=0000&mode=02&purpose=00" id="directUpiAppBtn" class="btn btn-solid btn-block">
+            [ LAUNCH UPI APP AGAIN ↗ ]
+          </a>
+          <div class="alt-modal-links">
+            <span>Global platforms:</span>
+            <a href="https://buymeacoffee.com/devsrinivas69" target="_blank" rel="noopener noreferrer">[ BUY ME A COFFEE ↗ ]</a>
+            <span>&bull;</span>
+            <a href="https://github.com/sponsors/Devsrinivas69" target="_blank" rel="noopener noreferrer">[ GITHUB SPONSORS ↗ ]</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Masthead Footer -->
   <footer class="site-footer">

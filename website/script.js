@@ -142,4 +142,116 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial simulation run
   runSimulation('canva');
+
+  // ==========================================================================
+  // FUND DEVELOPER & UPI REDIRECTION CONTROLLER (ZERO PUBLIC QR GRAPHIC)
+  // ==========================================================================
+  const UPI_CONFIG = {
+    vpa: '8088244385-2@ybl',
+    payeeName: 'K H SRINIVASA REDDY',
+    baseUri: 'upi://pay?pa=8088244385-2@ybl&pn=K%20H%20SRINIVASA%20REDDY&mc=0000&mode=02&purpose=00'
+  };
+
+  const fundModal = document.getElementById('fundModal');
+  const closeFundModalBtn = document.getElementById('closeFundModalBtn');
+  const fundModalOverlay = document.getElementById('fundModalOverlay');
+  const copyUpiBtn = document.getElementById('copyUpiBtn');
+  const modalTierName = document.getElementById('modalTierName');
+  const modalAmountVal = document.getElementById('modalAmountVal');
+  const directUpiAppBtn = document.getElementById('directUpiAppBtn');
+  const navFundDev = document.getElementById('navFundDev');
+
+  function openFundModal(tierTitle, usd, inr) {
+    if (!fundModal) return;
+
+    if (modalTierName) modalTierName.textContent = tierTitle || 'DEVELOPER CONTRIBUTION';
+    if (modalAmountVal) modalAmountVal.textContent = `$${usd} (approx. ₹${inr})`;
+
+    // Construct UPI Deep Link Intent URL with amount
+    const upiUriWithAmount = inr
+      ? `upi://pay?pa=${encodeURIComponent(UPI_CONFIG.vpa)}&pn=${encodeURIComponent(UPI_CONFIG.payeeName)}&am=${encodeURIComponent(inr)}&cu=INR&mc=0000&mode=02&purpose=00`
+      : UPI_CONFIG.baseUri;
+
+    if (directUpiAppBtn) {
+      directUpiAppBtn.setAttribute('href', upiUriWithAmount);
+    }
+
+    // Open modal
+    fundModal.classList.add('open');
+    fundModal.setAttribute('aria-hidden', 'false');
+
+    // Trigger immediate browser redirect to native UPI app
+    try {
+      window.location.href = upiUriWithAmount;
+    } catch (e) {
+      console.warn('Direct UPI redirect error, modal remains open for manual copy:', e);
+    }
+  }
+
+  function closeFundModal() {
+    if (!fundModal) return;
+    fundModal.classList.remove('open');
+    fundModal.setAttribute('aria-hidden', 'true');
+  }
+
+  // Tier buttons click
+  const tierButtons = document.querySelectorAll('.fund-tier-btn');
+  tierButtons.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const title = btn.getAttribute('data-title') || 'AI COMPUTE CREDITS';
+      const usd = btn.getAttribute('data-usd') || '10.00';
+      const inr = btn.getAttribute('data-inr') || '800';
+      openFundModal(title, usd, inr);
+    });
+  });
+
+  // Nav Fund Developer Link
+  if (navFundDev) {
+    navFundDev.addEventListener('click', (e) => {
+      e.preventDefault();
+      const supportSec = document.getElementById('support');
+      if (supportSec) {
+        supportSec.scrollIntoView({ behavior: 'smooth' });
+      }
+      openFundModal('AI COMPUTE CREDITS', '10.00', '800');
+    });
+  }
+
+  // Direct UPI link triggers in alternative bar
+  const directUpiTriggers = document.querySelectorAll('.direct-upi-trigger');
+  directUpiTriggers.forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      openFundModal('OPEN CONTRIBUTION', '10.00', '800');
+    });
+  });
+
+  // Close handlers
+  if (closeFundModalBtn) closeFundModalBtn.addEventListener('click', closeFundModal);
+  if (fundModalOverlay) fundModalOverlay.addEventListener('click', closeFundModal);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && fundModal && fundModal.classList.contains('open')) {
+      closeFundModal();
+    }
+  });
+
+  // 1-Click UPI Copy Handler
+  if (copyUpiBtn) {
+    copyUpiBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(UPI_CONFIG.vpa).then(() => {
+        const originalText = copyUpiBtn.textContent;
+        copyUpiBtn.textContent = '[ ✓ COPIED TO CLIPBOARD! ]';
+        copyUpiBtn.classList.add('copied');
+        setTimeout(() => {
+          copyUpiBtn.textContent = originalText;
+          copyUpiBtn.classList.remove('copied');
+        }, 2200);
+      }).catch(() => {
+        // Fallback
+        prompt('Copy UPI ID manually:', UPI_CONFIG.vpa);
+      });
+    });
+  }
 });
