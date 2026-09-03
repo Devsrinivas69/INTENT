@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, screen, desktopCapturer, session } from 'e
 import path, { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { spawn, execSync, ChildProcess } from 'child_process'
+import { spawn, execSync, execFileSync, ChildProcess } from 'child_process'
 import readline from 'readline'
 import dotenv from 'dotenv'
 import { GoogleGenerativeAI } from '@google/generative-ai'
@@ -491,8 +491,10 @@ function createOverlayWindow() {
 app.commandLine.appendSwitch('disable-gpu-sandbox')
 app.commandLine.appendSwitch('no-sandbox')
 
-app.on('gpu-process-crashed', (_e, killed) => {
-  startupLog(`GPU process crashed, killed=${killed}`)
+app.on('child-process-gone', (_e, details) => {
+  if (details.type === 'GPU') {
+    startupLog(`GPU process crashed: reason=${details.reason}, exitCode=${details.exitCode}`)
+  }
 })
 
 app.whenReady().then(async () => {

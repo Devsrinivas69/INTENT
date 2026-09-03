@@ -75,6 +75,7 @@ export function AssistantPanel() {
   const [isListening, setIsListening] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [statusMessage, setStatusMessage] = useState<string>('')
   const [showDiagnostics, setShowDiagnostics] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
@@ -441,6 +442,7 @@ export function AssistantPanel() {
     setScreenMap(null)
     setCompletionProofs([])
     setErrorMessage(null)
+    setStatusMessage('')
     setVerifyAttempts(0)
   }, [])
 
