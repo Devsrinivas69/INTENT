@@ -8,6 +8,17 @@ import sys
 import json
 import time
 import traceback
+import ctypes
+
+# Enable Windows Per-Monitor DPI Awareness V2 so all coordinate calls (UIA, Win32, WinRT)
+# operate in physical hardware pixels without OS scaling virtualization drift
+try:
+    ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+except Exception:
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except Exception:
+        pass
 
 from window_detector import (
     get_foreground_window_info, find_app_window, find_all_windows,

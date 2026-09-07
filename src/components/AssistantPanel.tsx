@@ -319,9 +319,11 @@ export function AssistantPanel() {
       instruction: currentLevel.instruction,
       bounds: targetResult.overlayBounds,
       cursorAnchor: targetResult.cursorAnchor,
+      targetAnchor: targetResult.targetAnchor,
       status: 'WAITING',
       method: targetResult.method,
       confidence: targetResult.confidence,
+      debugCandidates: targetResult.debugCandidates,
     })
 
     // 6. Enter WAITING_FOR_USER state

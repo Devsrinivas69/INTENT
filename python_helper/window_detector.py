@@ -12,6 +12,14 @@ import win32api
 import win32con
 import json
 
+try:
+    ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+except Exception:
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except Exception:
+        pass
+
 def get_scale_factor_for_monitor(hwnd):
     """Return the DPI scale factor for the monitor containing the given window."""
     try:

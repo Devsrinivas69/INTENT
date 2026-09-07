@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen, desktopCapturer, session } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, desktopCapturer, session, globalShortcut } from 'electron'
 import path, { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'fs'
 import { fileURLToPath } from 'url'
@@ -515,9 +515,19 @@ app.whenReady().then(async () => {
   createPanelWindow()
   createFloatingWindow()
   startupLog('All windows created')
+
+  try {
+    globalShortcut.register('CommandOrControl+Shift+D', () => {
+      overlayWin?.webContents.send('overlay:toggle-debug')
+      panelWin?.webContents.send('overlay:toggle-debug')
+    })
+  } catch (e) {
+    console.warn('[INTENT] Could not register Ctrl+Shift+D shortcut:', e)
+  }
 })
 
 app.on('window-all-closed', () => {
+  globalShortcut.unregisterAll()
   if (pythonProc) pythonProc.kill()
   if (domBridgeWss) domBridgeWss.close()
   app.quit()
@@ -565,26 +575,57 @@ ipcMain.handle('screen:get-display-info', () => {
   const virtualTop = Math.min(...all.map(d => d.bounds.y))
   const virtualRight = Math.max(...all.map(d => d.bounds.x + d.bounds.width))
   const virtualBottom = Math.max(...all.map(d => d.bounds.y + d.bounds.height))
+
+  const displays = all.map(d => {
+    const physX = Math.round(d.bounds.x * d.scaleFactor)
+    const physY = Math.round(d.bounds.y * d.scaleFactor)
+    const physW = Math.round(d.bounds.width * d.scaleFactor)
+    const physH = Math.round(d.bounds.height * d.scaleFactor)
+    return {
+      id: d.id,
+      x: d.bounds.x, // DIP x
+      y: d.bounds.y, // DIP y
+      width: d.bounds.width, // DIP width
+      height: d.bounds.height, // DIP height
+      scaleFactor: d.scaleFactor,
+      isPrimary: d.id === primary.id,
+      dipBounds: {
+        x: d.bounds.x,
+        y: d.bounds.y,
+        width: d.bounds.width,
+        height: d.bounds.height,
+      },
+      physicalBounds: {
+        x: physX,
+        y: physY,
+        width: physW,
+        height: physH,
+      },
+    }
+  })
+
+  const virtualLeftPhysical = Math.min(...displays.map(d => d.physicalBounds.x))
+  const virtualTopPhysical = Math.min(...displays.map(d => d.physicalBounds.y))
+  const virtualRightPhysical = Math.max(...displays.map(d => d.physicalBounds.x + d.physicalBounds.width))
+  const virtualBottomPhysical = Math.max(...displays.map(d => d.physicalBounds.y + d.physicalBounds.height))
+
   return {
     // Primary display
     screenWidth: primary.bounds.width,
     screenHeight: primary.bounds.height,
     scaleFactor: primary.scaleFactor,
-    // Virtual desktop bounds
+    // DIP Virtual bounds for overlay window
     virtualLeft,
     virtualTop,
     totalWidth: virtualRight - virtualLeft,
     totalHeight: virtualBottom - virtualTop,
-    // Full multi-monitor topology
-    displays: all.map(d => ({
-      id: d.id,
-      x: d.bounds.x,
-      y: d.bounds.y,
-      width: d.bounds.width,
-      height: d.bounds.height,
-      scaleFactor: d.scaleFactor,
-      isPrimary: d.id === primary.id,
-    }))
+    // Physical virtual desktop bounds
+    virtualLeftPhysical,
+    virtualTopPhysical,
+    totalWidthPhysical: virtualRightPhysical - virtualLeftPhysical,
+    totalHeightPhysical: virtualBottomPhysical - virtualTopPhysical,
+    // Displays
+    displays,
   }
 })
 

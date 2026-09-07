@@ -10,11 +10,17 @@ const api = (window as any).electronAPI
 
 export function GuidanceOverlay() {
   const [data, setData] = useState<OverlayPayload | null>(null)
+  const [debugMode, setDebugMode] = useState<boolean>(false)
 
   const handleUpdate = useCallback((raw: unknown) => {
-    setData(raw as OverlayPayload)
+    const payload = raw as OverlayPayload
+    setData(payload)
+    if (payload?.debugMode !== undefined) {
+      setDebugMode(Boolean(payload.debugMode))
+    }
   }, [])
 
+  // Listen for IPC overlay updates
   useEffect(() => {
     if (!api?.onOverlayUpdate) return
     const cleanup = api.onOverlayUpdate(handleUpdate)
@@ -22,6 +28,30 @@ export function GuidanceOverlay() {
       if (typeof cleanup === 'function') cleanup()
     }
   }, [handleUpdate])
+
+  // Listen for Ctrl+Shift+D debug mode toggle
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+        e.preventDefault()
+        setDebugMode(prev => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    let cleanupIpc: (() => void) | undefined
+    if (api?.onToggleDebug) {
+      cleanupIpc = api.onToggleDebug(() => {
+        setDebugMode(prev => !prev)
+      })
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      if (typeof cleanupIpc === 'function') cleanupIpc()
+    }
+  }, [])
 
   if (!data || !data.bounds || !data.cursorAnchor || !data.visible) {
     return null
@@ -35,12 +65,15 @@ export function GuidanceOverlay() {
       <IntentCursor
         bounds={data.bounds}
         cursorAnchor={data.cursorAnchor}
+        targetAnchor={data.targetAnchor}
         targetText={data.targetText}
         levelNumber={data.levelNumber}
         totalLevels={data.totalLevels}
         status={data.status}
         method={data.method}
         confidence={data.confidence}
+        debugMode={debugMode}
+        debugCandidates={data.debugCandidates}
       />
     </div>
   )

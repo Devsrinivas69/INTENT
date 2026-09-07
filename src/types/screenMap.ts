@@ -9,8 +9,12 @@ export const DesktopBoundsSchema = z.object({
   y: z.number(),
   width: z.number(),
   height: z.number(),
+  screenId: z.union([z.string(), z.number()]).optional(),
 })
 export type DesktopBounds = z.infer<typeof DesktopBoundsSchema>
+
+export const ScreenRectSchema = DesktopBoundsSchema
+export type ScreenRect = DesktopBounds
 
 // ─── Screen Element (Single Detected UI Control) ─────────────────────────────
 
@@ -60,18 +64,58 @@ export interface WindowInfo {
 
 // ─── Target Candidate ─────────────────────────────────────────────────────────
 
+export type TargetAnchorType =
+  | 'CENTER'
+  | 'TOP'
+  | 'BOTTOM'
+  | 'LEFT'
+  | 'RIGHT'
+  | 'TEXT_CENTER'
+  | 'ICON_CENTER'
+  | 'CLICKABLE_CENTER'
+  | 'CANVAS_CENTER'
+
 export interface TargetCandidate {
-  id?: string
+  id: string
   text: string
   type?: string
   x: number
   y: number
   width: number
   height: number
+  rect?: ScreenRect
   confidence: number
-  source: string
+  source: 'uia' | 'dom' | 'dom_bridge' | 'ocr' | 'winrt_ocr' | 'opencv' | 'fused' | string
+  semanticScore?: number
+  visualScore?: number
+  interactionScore?: number
+  crossSensorAgreement?: number
+  visibilityScore?: number
+  positionalStabilityScore?: number
+  finalScore?: number
   score?: number
   similarity?: number
+  controlType?: string
+  anchor?: { x: number; y: number }
+  metadata?: Record<string, any>
+}
+
+// ─── Canonical Resolved Target ────────────────────────────────────────────────
+
+export interface ResolvedTarget {
+  id: string
+  rect: ScreenRect
+  overlayRect: ScreenRect
+  anchor: { x: number; y: number }
+  cursorAnchor: { x: number; y: number }
+  confidence: number
+  source: string
+  monitorId?: string | number
+  targetType: string
+  text: string
+  candidates: TargetCandidate[]
+  debugCandidates?: TargetCandidate[]
+  timestamp: number
 }
 
 // ─── Target Lock (Authoritative Validated Target Location) ───────────────────
@@ -85,11 +129,13 @@ export interface TargetLock {
   bounds: DesktopBounds          // Raw Physical Desktop Pixels
   overlayBounds: DesktopBounds   // Electron Overlay CSS Pixels
   cursorAnchor: { x: number; y: number } // Cursor anchor in Overlay CSS Space
+  targetAnchor?: { x: number; y: number } // Primary click interaction point in Overlay CSS Space
   center: { x: number; y: number }       // Physical Center
   confidence: number
-  method: string                 // 'opencv_canvas' | 'winrt_ocr' | 'uia' | 'dom_bridge' | 'gemini_disambig'
+  method: string                 // 'opencv_canvas' | 'winrt_ocr' | 'uia' | 'dom_bridge' | 'gemini_disambig' | 'fused'
   isStable: boolean
   candidates: TargetCandidate[]
+  debugCandidates?: TargetCandidate[]
   timestamp: number
   // Stale-target protection fields
   windowBounds: DesktopBounds    // Window bounds at time of locking (for staleness check)
@@ -150,6 +196,8 @@ export interface DisplayRect {
   height: number
   scaleFactor: number
   isPrimary: boolean
+  dipBounds?: { x: number; y: number; width: number; height: number }
+  physicalBounds?: { x: number; y: number; width: number; height: number }
 }
 
 export interface DisplayInfo {
@@ -160,6 +208,10 @@ export interface DisplayInfo {
   virtualTop?: number
   totalWidth?: number
   totalHeight?: number
+  virtualLeftPhysical?: number
+  virtualTopPhysical?: number
+  totalWidthPhysical?: number
+  totalHeightPhysical?: number
   displays?: DisplayRect[]
 }
 
@@ -173,8 +225,11 @@ export interface OverlayPayload {
   instruction: string
   bounds: DesktopBounds | null          // Overlay CSS Pixels
   cursorAnchor: { x: number; y: number } | null // Overlay CSS Pixels
+  targetAnchor?: { x: number; y: number } | null // Overlay CSS Pixels
   status: 'SCANNING' | 'GUIDING' | 'WAITING' | 'ACTION_DETECTED' | 'VERIFYING' | 'COMPLETE' | 'NOT_FOUND'
   method: string
   confidence: number
   isDev?: boolean
+  debugMode?: boolean
+  debugCandidates?: TargetCandidate[]
 }

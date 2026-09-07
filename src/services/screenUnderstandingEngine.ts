@@ -23,7 +23,8 @@
 //   - Never trust VLM-generated coordinates directly — only VLM candidate selection
 //   - Stale targets (window moved/resized/expired) are always re-scanned
 
-import { coordinateMapper } from './coordinateMapper'
+import { coordinateManager } from './coordinateMapper'
+import { targetResolver } from './targetResolver'
 import { stateTransitionEngine } from './stateTransitionEngine'
 import type {
   WindowInfo, ScreenMap, TargetCandidate, TargetLock, TargetResult, CompletionProof, DisplayInfo,
@@ -224,7 +225,7 @@ export class ScreenUnderstandingEngine {
     return { valid: true }
   }
 
-  // ── Step 5: Multi-Tier Target Finding ─────────────────────────────────────
+  // ── Step 5: Authoritative Multi-Tier Target Resolution Pipeline ───────────
 
   async findTarget(
     winInfo: WindowInfo,
@@ -234,56 +235,39 @@ export class ScreenUnderstandingEngine {
     const targetType = level.targetType || (level.levelNumber === 1 ? 'CANVAS_OBJECT' : 'BUTTON')
     const now = Date.now()
 
-    // ── DOM Bridge Candidates (Tier 2 — Canva only, highest accuracy for web UI) ──
-    let domBridgeMatch: any = null
-    if (winInfo.app === 'canva') {
+    const rawCandidates: Array<{ raw: any; source: string }> = []
+
+    // ── Tier 2: DOM Bridge Candidates (Canva & Chrome web UI) ───────────────
+    if (winInfo.app === 'canva' || winInfo.app?.startsWith('chrome')) {
       const domElements = await this.getDomBridgeElements()
       if (domElements.length > 0) {
-        // Find best match by semantic ID, label similarity, or synonyms
         const target_lower = level.targetText.toLowerCase()
-        const target_aliases = [
-          target_lower,
-          ...(level.targetText.toLowerCase().includes('bg') || level.targetText.toLowerCase().includes('background')
-            ? ['bg remover', 'background remover', 'remove background', 'edit', 'edit photo']
-            : []),
-          ...(level.targetText.toLowerCase().includes('edit')
-            ? ['edit photo', 'edit', 'edit image', 'bg remover', 'background remover']
-            : []),
-          ...(level.targetText.toLowerCase().includes('animate')
-            ? ['animate', 'add animation', 'animation', 'fade', 'pan']
-            : [])
-        ]
-
         for (const el of domElements) {
-          const label = (el.label || '').toLowerCase().trim()
-          const semanticId = (el.semanticId || '').toLowerCase().trim()
-          const isMatch = target_aliases.some(alias =>
-            label === alias ||
-            semanticId === alias.replace(' ', '_') ||
-            (label.length >= 3 && alias.includes(label)) ||
-            (alias.length >= 3 && label.includes(alias))
-          )
+          const label = (el.label || el.text || '').toLowerCase().trim()
+          const semId = (el.semanticId || el.id || '').toLowerCase().trim()
+          const isMatch =
+            label === target_lower ||
+            semId === target_lower.replace(/\s+/g, '_') ||
+            label.includes(target_lower) ||
+            target_lower.includes(label)
 
-          if (isMatch && el.bounds?.width > 4 && el.bounds?.height > 4) {
-            const candidate = {
+          rawCandidates.push({
+            raw: {
               ...el.bounds,
-              text: el.label,
+              id: el.semanticId || el.id,
+              text: el.label || el.text,
               type: targetType,
-              confidence: 0.99,
-              source: 'dom_bridge',
-            }
-
-            const validation = this.validateTarget(candidate, winInfo)
-            if (validation.valid) {
-              domBridgeMatch = candidate
-              break
-            }
-          }
+              similarity: isMatch ? 0.98 : 0.65,
+              confidence: isMatch ? 0.99 : 0.75,
+              control_type: 'ButtonControl',
+            },
+            source: 'dom_bridge',
+          })
         }
       }
     }
 
-    // ── Call Python Helper (Tier 1 UIA + Tier 3 OCR + Tier 4 OpenCV) ─────────
+    // ── Tiers 1, 3, 4: Call Python Helper (UIA + OCR + OpenCV) ──────────────
     const screenshot: string | null = await api.captureScreen()
     const localResult = await api.findTarget({
       hwnd: winInfo.hwnd,
@@ -298,108 +282,84 @@ export class ScreenUnderstandingEngine {
       target_type: targetType,
       level_number: level.levelNumber,
       screenshot,
-      // Pass DOM bridge match as a reference for comparison/corroboration
-      dom_bridge_bounds: domBridgeMatch ?? null,
+      dom_bridge_bounds: rawCandidates.length > 0 ? rawCandidates[0].raw : null,
     })
 
-    // ── Multi-Source Agreement / Best Source Selection ─────────────────────
-    let bestTarget: any = null
-    let detectionMethod = 'none'
-
-    if (domBridgeMatch) {
-      // DOM bridge is highest confidence for Canva (Tier 2)
-      const localTarget = localResult?.target
-      if (localTarget) {
-        // Check if DOM bridge and local detection agree (IoU overlap)
-        const iou = this.calculateIoU(domBridgeMatch, localTarget)
-        if (iou >= 0.30) {
-          // Sources agree — use DOM bridge bounds (more accurate, from actual DOM)
-          bestTarget = { ...domBridgeMatch, confidence: Math.min(0.99, domBridgeMatch.confidence + 0.01) }
-          detectionMethod = 'dom_bridge+ocr_agreement'
-        } else {
-          // Sources disagree — prefer DOM bridge for Canva
-          bestTarget = domBridgeMatch
-          detectionMethod = 'dom_bridge'
-          console.log(`[SUE] DOM bridge and local detection disagree (IoU=${iou.toFixed(2)}) — using DOM bridge`)
-        }
-      } else {
-        bestTarget = domBridgeMatch
-        detectionMethod = 'dom_bridge'
-      }
-    } else if (localResult?.found && localResult.target) {
-      bestTarget = localResult.target
-      detectionMethod = localResult.method || 'local_engine'
-    }
-
-    // ── Apply 12-Point Validation ─────────────────────────────────────────
-    if (bestTarget) {
-      const validation = this.validateTarget(bestTarget, winInfo)
-      if (!validation.valid) {
-        console.warn(`[SUE] Target REJECTED by validation: ${validation.reason}`)
-        bestTarget = null
+    if (localResult?.candidates && Array.isArray(localResult.candidates)) {
+      for (const c of localResult.candidates) {
+        rawCandidates.push({
+          raw: c,
+          source: c.source || 'uia',
+        })
       }
     }
-
-    // ── Gemini Vision Fallback (Tier 5 — Disambiguation Only) ─────────────
-    if (!bestTarget && screenshot) {
-      console.log('[SUE] Falling back to Gemini Vision for', level.targetText)
-      const visionResult: any = await api.findTargetVision({
-        screenshot,
-        application: winInfo.app ?? '',
-        levelTitle: level.title,
-        targetText: level.targetText,
-        targetDescription: level.targetDescription,
+    if (localResult?.target) {
+      rawCandidates.push({
+        raw: localResult.target,
+        source: localResult.method || localResult.target.source || 'local',
       })
-
-      if (visionResult?.found && visionResult.width > 0 && visionResult.height > 0) {
-        const validation = this.validateTarget(visionResult, winInfo)
-        if (validation.valid) {
-          bestTarget = visionResult
-          detectionMethod = 'gemini_vision'
-        } else {
-          console.warn(`[SUE] Gemini Vision result also rejected: ${validation.reason}`)
-        }
-      }
     }
 
-    // ── No Target Found ────────────────────────────────────────────────────
-    if (!bestTarget) {
+    // ── Single Authoritative Resolution (Fusion + IoU + Scoring + Disambiguation) ─
+    const anchorType = targetType === 'CANVAS_OBJECT' ? 'CANVAS_CENTER' : 'CLICKABLE_CENTER'
+    const resolution = await targetResolver.resolve({
+      rawCandidates,
+      targetText: level.targetText,
+      targetType,
+      targetDescription: level.targetDescription,
+      winInfo,
+      screenshot,
+      anchorType,
+    })
+
+    const resolved = resolution.resolved
+
+    if (!resolved) {
+      console.warn(`[INTENT SUE] No viable target found for "${level.targetText}"`)
       return {
         found: false,
-        reason: `Could not confidently locate "${level.targetText}" — tried DOM Bridge, UIA, OCR, OpenCV, and Gemini Vision`,
-        candidates: localResult?.candidates || [],
+        reason: `Could not confidently locate "${level.targetText}" across DOM Bridge, UIA, OCR, and OpenCV.`,
+        candidates: resolution.candidates || [],
       }
     }
 
-    // ── Build Final TargetLock ─────────────────────────────────────────────
-    const rawPhysicalBounds = {
-      x: bestTarget.x,
-      y: bestTarget.y,
-      width: bestTarget.width,
-      height: bestTarget.height,
+    // ── 12-Point Target Validation ──────────────────────────────────────────
+    const validation = this.validateTarget(resolved.rect, winInfo)
+    if (!validation.valid) {
+      console.warn(`[INTENT SUE] Target REJECTED by 12-point validation: ${validation.reason}`)
+      return {
+        found: false,
+        reason: `Target candidate rejected: ${validation.reason}`,
+        candidates: resolution.candidates || [],
+      }
     }
-    const overlayBounds = coordinateMapper.physicalToOverlay(rawPhysicalBounds)
-    const cursorAnchor = coordinateMapper.cursorAnchorFromBounds(overlayBounds, targetType)
+
+    // ── Construct Validated TargetLock ──────────────────────────────────────
+    const display = coordinateManager.findDisplayForPhysicalPoint(
+      resolved.rect.x + resolved.rect.width / 2,
+      resolved.rect.y + resolved.rect.height / 2
+    )
 
     const targetLock: TargetLock = {
       found: true,
       targetId: `target_${level.id}_${now}`,
       levelId: level.id,
-      text: bestTarget.text || level.targetText,
+      text: resolved.text || level.targetText,
       type: targetType,
-      bounds: rawPhysicalBounds,
-      overlayBounds,
-      cursorAnchor,
+      bounds: resolved.rect,
+      overlayBounds: resolved.overlayRect,
+      cursorAnchor: resolved.cursorAnchor,
+      targetAnchor: resolved.anchor,
       center: {
-        x: Math.round(rawPhysicalBounds.x + rawPhysicalBounds.width / 2),
-        y: Math.round(rawPhysicalBounds.y + rawPhysicalBounds.height / 2),
+        x: Math.round(resolved.rect.x + resolved.rect.width / 2),
+        y: Math.round(resolved.rect.y + resolved.rect.height / 2),
       },
-      confidence: bestTarget.confidence || 0.90,
-      method: detectionMethod,
+      confidence: resolved.confidence,
+      method: resolved.source,
       isStable: true,
-      candidates: localResult?.candidates || [],
+      candidates: resolution.candidates,
+      debugCandidates: resolution.debugCandidates,
       timestamp: now,
-      // Stale target protection
       windowBounds: { x: winInfo.x, y: winInfo.y, width: winInfo.width, height: winInfo.height },
       windowHwnd: winInfo.hwnd,
       screenWidth: this.displayInfo?.screenWidth ?? 1920,
@@ -407,12 +367,19 @@ export class ScreenUnderstandingEngine {
       expiresAt: now + TARGET_LOCK_TTL_MS,
     }
 
+    // ── Coordinate Telemetry Logging (Section 20 of Precision Spec) ─────────
     console.log(
-      `[INTENT TARGET LOCKED] L${level.levelNumber} "${targetLock.text}" ` +
-      `METHOD: ${detectionMethod.toUpperCase()} ` +
-      `PHYSICAL: [${rawPhysicalBounds.x},${rawPhysicalBounds.y},${rawPhysicalBounds.width}×${rawPhysicalBounds.height}] ` +
-      `OVERLAY: [${overlayBounds.x},${overlayBounds.y}] ` +
-      `CONFIDENCE: ${(targetLock.confidence * 100).toFixed(0)}%`
+      `\n[INTENT TARGET LOCKED]\n` +
+      `App: ${winInfo.app || 'desktop'}\n` +
+      `Workflow: ${level.id}\n` +
+      `Step: ${level.title} ("${level.targetText}")\n` +
+      `Source: ${resolved.source}\n` +
+      `Physical: x=${resolved.rect.x}, y=${resolved.rect.y}, w=${resolved.rect.width}, h=${resolved.rect.height}\n` +
+      `Monitor: DISPLAY_${display?.id ?? 0} (scaleFactor=${display?.scaleFactor ?? 1.0})\n` +
+      `Overlay: x=${resolved.overlayRect.x}, y=${resolved.overlayRect.y}, w=${resolved.overlayRect.width}, h=${resolved.overlayRect.height}\n` +
+      `Anchor: x=${resolved.anchor.x}, y=${resolved.anchor.y}\n` +
+      `Cursor: x=${resolved.cursorAnchor.x}, y=${resolved.cursorAnchor.y}\n` +
+      `Confidence: ${(resolved.confidence * 100).toFixed(0)}%`
     )
 
     return targetLock

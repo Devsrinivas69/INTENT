@@ -104,6 +104,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('overlay:update', handler)
   },
 
+  onToggleDebug: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('overlay:toggle-debug', handler)
+    return () => ipcRenderer.removeListener('overlay:toggle-debug', handler)
+  },
+
   // ── Platform ───────────────────────────────────────────────────────────────
   platform: process.platform,
 })

@@ -19,8 +19,8 @@
     "audit": "python scripts/audit_intent.py",
     "preview": "vite preview",
     "diagnose": "python scripts/diagnose.py",
-    "test:guidance": "python scripts/test_guidance.py",
     "audit:intent": "python scripts/audit_intent.py",
+    "test:precision": "python scripts/test_precision_accuracy.py",
     "intent:self-test": "python -X utf8 scripts/self_test.py",
     "website": "python -m http.server 3000 --directory website",
     "website:open": "start http://localhost:3000 && python -m http.server 3000 --directory website"
