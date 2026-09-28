@@ -4,14 +4,22 @@ import { ProgressIndicator } from './ProgressIndicator'
 import { VoiceControls } from './VoiceControls'
 import { SettingsModal } from './SettingsModal'
 import { SupportModal } from './SupportModal'
+import { ConnectivityBadge } from './ConnectivityBadge'
+import { OfflineBanner } from './OfflineBanner'
+import { CandidatePicker } from './CandidatePicker'
+import { WorkflowSelectorModal } from './WorkflowSelectorModal'
 import { intentEngine } from '../services/intentEngine'
 import { screenUnderstandingEngine } from '../services/screenUnderstandingEngine'
 import { coordinateMapper } from '../services/coordinateMapper'
 import { voiceService } from '../services/voice'
-import { getWorkflow } from '../workflows/index'
+import { connectivityManager } from '../services/connectivityManager'
+import { taskPersistenceService } from '../services/taskPersistenceService'
+import { getWorkflow, workflows } from '../workflows/index'
 import type { IntentResult, AppState } from '../types/intent'
 import type { Workflow, WorkflowLevel } from '../types/workflow'
-import type { WindowInfo, TargetLock, ScreenMap, CompletionProof } from '../types/screenMap'
+import type { WindowInfo, TargetLock, ScreenMap, CompletionProof, TargetCandidate } from '../types/screenMap'
+import type { PersistentTaskState } from '../types/taskPersistence'
+import type { ConnectivityStatus } from '../types/connectivity'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const api = (window as any).electronAPI
@@ -83,6 +91,14 @@ export function AssistantPanel() {
   const [verifyAttempts, setVerifyAttempts] = useState(0)
   const [apiStatus, setApiStatus] = useState<any>(null)
 
+  // ── Offline Mode & Task Continuity State ─────────────────────────────────
+  const [connectivityStatus, setConnectivityStatus] = useState<ConnectivityStatus>(() => connectivityManager.getStatus())
+  const [showWorkflowModal, setShowWorkflowModal] = useState(false)
+  const [pendingTaskRestore, setPendingTaskRestore] = useState<PersistentTaskState | null>(null)
+  const [needsUserConfirmation, setNeedsUserConfirmation] = useState(false)
+  const [confirmationReason, setConfirmationReason] = useState<string>('')
+  const activeTaskIdRef = useRef<string | null>(null)
+
   // ── First Run Setup Wizard ────────────────────────────────────────────────
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(() => {
     return localStorage.getItem('intent_setup_complete') !== 'true'
@@ -97,6 +113,19 @@ export function AssistantPanel() {
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ── Connectivity listener & Task State Restoration ─────────────────────────
+  useEffect(() => {
+    const unsub = connectivityManager.addListener((s) => {
+      setConnectivityStatus(s)
+    })
+    taskPersistenceService.loadActiveTask().then((saved) => {
+      if (saved && saved.currentLevelIndex < saved.totalLevels) {
+        setPendingTaskRestore(saved)
+      }
+    }).catch(() => {})
+    return () => unsub()
+  }, [])
 
   const handleRefreshApiStatus = useCallback(() => {
     api?.getApiStatus?.().then((status: any) => {
@@ -140,6 +169,11 @@ export function AssistantPanel() {
   // ─────────────────────────────────────────────────────────────────────────
 
   const startListening = useCallback(() => {
+    if (connectivityManager.isOffline()) {
+      setErrorMessage('Voice input requires an active internet connection (Google Speech Service). Please type your request while offline.')
+      return
+    }
+
     const SpeechRecognitionCtor =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognitionCtor) {
@@ -162,7 +196,9 @@ export function AssistantPanel() {
     }
     rec.onerror = (e: SpeechRecognitionErrorEvent) => {
       setIsListening(false)
-      if (e.error !== 'no-speech') {
+      if (e.error === 'network' || e.error === 'service-not-allowed') {
+        setErrorMessage('Voice input is unavailable offline. Please type your request.')
+      } else if (e.error !== 'no-speech') {
         setErrorMessage(`Microphone: ${e.error}`)
       }
       setState('IDLE')
@@ -256,6 +292,10 @@ export function AssistantPanel() {
       if (allLevelsPassed) {
         setState('TASK_COMPLETE')
         voiceService.speak('Done. All steps verified.')
+        if (activeTaskIdRef.current) {
+          taskPersistenceService.clearActiveTask(activeTaskIdRef.current)
+          activeTaskIdRef.current = null
+        }
         await api?.hideOverlay?.()
       } else {
         console.warn('[AssistantPanel] Premature completion rejected: Missing proofs', proofsAcc)
@@ -268,6 +308,8 @@ export function AssistantPanel() {
     const currentLevel = wf.levels[levelIdx]
     setCurrentLevelIndex(levelIdx)
     setVerifyAttempts(0)
+    setNeedsUserConfirmation(false)
+    setConfirmationReason('')
     setState('SCREEN_SCANNING')
     setStatusMessage(`Scanning screen for "${currentLevel.targetText}"...`)
 
@@ -298,6 +340,15 @@ export function AssistantPanel() {
       return
     }
 
+    // ── Offline Conservative Disambiguation Check ───────────────────────────
+    if (targetResult.requiresUserChoice && targetResult.disambiguationOptions && targetResult.disambiguationOptions.length > 1) {
+      setTargetLock(targetResult)
+      setState('DISAMBIGUATION_REQUIRED')
+      setStatusMessage('Multiple matching controls found. Please choose the intended button.')
+      await api?.hideOverlay?.()
+      return
+    }
+
     // 3. Target Validated & Locked
     setState('TARGET_LOCKED')
     setTargetLock(targetResult)
@@ -310,6 +361,25 @@ export function AssistantPanel() {
     if (levelIdx > 0) {
       voiceService.speak(currentLevel.voiceInstruction)
     }
+
+    // Persist Task State (survives app restart or network loss)
+    const taskId = activeTaskIdRef.current || `task_${Date.now()}`
+    activeTaskIdRef.current = taskId
+    taskPersistenceService.saveTask({
+      taskId,
+      intent: userIntent || wf.name,
+      application: wf.application,
+      workflowId: wf.id,
+      currentLevelIndex: levelIdx,
+      totalLevels: wf.levels.length,
+      completedLevels: proofsAcc.map((p) => p.levelNumber),
+      completionProofs: proofsAcc,
+      pendingActions: [],
+      connectivityState: connectivityManager.getState(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      syncState: connectivityManager.isOnline() ? 'SYNCED' : 'PENDING_SYNC',
+    })
 
     await api?.showOverlay?.({
       visible: true,
@@ -331,7 +401,7 @@ export function AssistantPanel() {
 
     // 7. Schedule Reactive Verification Loop (every 1000ms)
     scheduleVerification(wf, levelIdx, activeWin, proofsAcc)
-  }, [windowInfo])
+  }, [windowInfo, userIntent])
 
   // ─────────────────────────────────────────────────────────────────────────
   // Reactive State-Transition Verification Loop
@@ -353,6 +423,8 @@ export function AssistantPanel() {
 
         if (result.verified && result.proof) {
           // Action detected and verified!
+          setNeedsUserConfirmation(false)
+          setConfirmationReason('')
           console.log(`[INTENT] Step ${currentLevel.levelNumber} VERIFIED:`, result.proof)
           setState('LEVEL_COMPLETE')
           voiceService.speak('Step verified. Click continue when ready.')
@@ -360,13 +432,38 @@ export function AssistantPanel() {
           const updatedProofs = [...proofsAcc, result.proof]
           setCompletionProofs(updatedProofs)
 
+          // Persist progress update with new CompletionProof
+          if (activeTaskIdRef.current) {
+            taskPersistenceService.saveTask({
+              taskId: activeTaskIdRef.current,
+              intent: userIntent || wf.name,
+              application: wf.application,
+              workflowId: wf.id,
+              currentLevelIndex: levelIdx + 1,
+              totalLevels: wf.levels.length,
+              completedLevels: updatedProofs.map((p) => p.levelNumber),
+              completionProofs: updatedProofs,
+              pendingActions: [],
+              connectivityState: connectivityManager.getState(),
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              syncState: connectivityManager.isOnline() ? 'SYNCED' : 'PENDING_SYNC',
+            })
+          }
+
           // If auto-advance is enabled, advance after a 1.5s grace period
           if (autoAdvance) {
             setTimeout(async () => {
               await executeLevel(wf, levelIdx + 1, updatedProofs)
             }, 1500)
           }
+        } else if (result.confidenceState === 'NEEDS_USER_CONFIRMATION') {
+          setNeedsUserConfirmation(true)
+          setConfirmationReason(result.reason || 'Screen change detected. Did you complete this step?')
+          // Continue verification poll in background
+          scheduleVerification(wf, levelIdx, win, proofsAcc)
         } else {
+          setNeedsUserConfirmation(false)
           // Keep polling every 1000ms
           scheduleVerification(wf, levelIdx, win, proofsAcc)
         }
@@ -374,7 +471,112 @@ export function AssistantPanel() {
         scheduleVerification(wf, levelIdx, win, proofsAcc)
       }
     }, 1000)
-  }, [executeLevel, autoAdvance])
+  }, [executeLevel, autoAdvance, userIntent])
+
+  const handleSelectDisambiguatedCandidate = useCallback(async (c: TargetCandidate) => {
+    if (!workflow) return
+    const currentLevel = workflow.levels[currentLevelIndex]
+    const win = windowInfo || {
+      found: true,
+      app: workflow.application,
+      title: workflow.application,
+      hwnd: 0,
+      x: 0,
+      y: 0,
+      width: window.screen.width,
+      height: window.screen.height,
+      scale_factor: 1.0,
+      is_foreground: true,
+    }
+
+    const screenRect = c.rect || { x: c.x, y: c.y, width: c.width, height: c.height }
+    const overlayRect = coordinateMapper.screenToOverlayRect(screenRect)
+    const targetAnchor = coordinateMapper.computeTargetAnchor(overlayRect, 'CLICKABLE_CENTER', currentLevel.targetType || 'BUTTON')
+    const cursorAnchor = coordinateMapper.cursorAnchorFromBounds(overlayRect, currentLevel.targetType || 'BUTTON', targetAnchor)
+
+    const updatedLock: TargetLock = {
+      found: true,
+      targetId: `target_chosen_${Date.now()}`,
+      levelId: currentLevel.id,
+      text: c.text || currentLevel.targetText,
+      type: currentLevel.targetType || 'BUTTON',
+      bounds: screenRect,
+      overlayBounds: overlayRect,
+      cursorAnchor,
+      targetAnchor,
+      center: {
+        x: Math.round(screenRect.x + screenRect.width / 2),
+        y: Math.round(screenRect.y + screenRect.height / 2),
+      },
+      confidence: c.confidence,
+      method: c.source,
+      isStable: true,
+      candidates: [c],
+      timestamp: Date.now(),
+      windowBounds: { x: win.x, y: win.y, width: win.width, height: win.height },
+      windowHwnd: win.hwnd,
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height,
+      expiresAt: Date.now() + 30000,
+    }
+
+    setTargetLock(updatedLock)
+    await screenUnderstandingEngine.captureBaseline(currentLevel, updatedLock)
+
+    setState('LEVEL_ACTIVE')
+    await api?.showOverlay?.({
+      visible: true,
+      levelNumber: currentLevel.levelNumber,
+      totalLevels: workflow.levels.length,
+      targetText: updatedLock.text,
+      instruction: currentLevel.instruction,
+      bounds: updatedLock.overlayBounds,
+      cursorAnchor: updatedLock.cursorAnchor,
+      targetAnchor: updatedLock.targetAnchor,
+      status: 'WAITING',
+      method: updatedLock.method,
+      confidence: updatedLock.confidence,
+    })
+
+    setState('WAITING_FOR_USER')
+    scheduleVerification(workflow, currentLevelIndex, win, completionProofs)
+  }, [workflow, currentLevelIndex, windowInfo, completionProofs, scheduleVerification])
+
+  const handleSelectDirectWorkflow = useCallback(async (wf: Workflow) => {
+    setWorkflow(wf)
+    setUserIntent(wf.name)
+    setCurrentLevelIndex(0)
+    setCompletionProofs([])
+    setState('APP_DETECTING')
+    const win = await screenUnderstandingEngine.getWindowInfo(wf.application)
+    setWindowInfo(win)
+    if (wf.application === 'canva' && win && !win.is_foreground) {
+      setState('CANVA_BACKGROUND_PROMPT')
+      return
+    }
+    setCurrentLevelIndex(0)
+    setState('TASK_SELECTED')
+  }, [])
+
+  const handleRestoreTask = useCallback(async (saved: PersistentTaskState) => {
+    const wf =
+      workflows.find((w) => w.id === saved.workflowId || (w.application === saved.application && w.task === saved.workflowId)) ||
+      getWorkflow(saved.application, saved.workflowId)
+    if (wf) {
+      setWorkflow(wf)
+      setUserIntent(saved.intent)
+      setCurrentLevelIndex(saved.currentLevelIndex)
+      setCompletionProofs(saved.completionProofs || [])
+      activeTaskIdRef.current = saved.taskId
+      setPendingTaskRestore(null)
+      setState('TASK_SELECTED')
+      voiceService.speak(`Resuming ${wf.name} at step ${saved.currentLevelIndex + 1}.`)
+      await executeLevel(wf, saved.currentLevelIndex, saved.completionProofs || [])
+    } else {
+      setPendingTaskRestore(null)
+      await taskPersistenceService.clearActiveTask(saved.taskId)
+    }
+  }, [executeLevel])
 
   const handleManualAdvance = useCallback(async () => {
     if (!workflow) return
@@ -387,12 +589,14 @@ export function AssistantPanel() {
       stateChanged: true,
       evidence: ['Manual human confirmation'],
       confidence: 1.0,
+      verificationConfidence: 'VERIFIED',
       method: 'human_approval',
       timestamp: Date.now(),
       bounds: targetLock?.bounds || { x: 0, y: 0, width: 0, height: 0 },
     }
     const updatedProofs = [...completionProofs.filter(p => p.levelId !== currentLevel.id), syntheticProof]
     setCompletionProofs(updatedProofs)
+    setNeedsUserConfirmation(false)
     voiceService.speak('Continuing to next step.')
     await executeLevel(workflow, currentLevelIndex + 1, updatedProofs)
   }, [workflow, currentLevelIndex, completionProofs, targetLock, executeLevel])
@@ -402,7 +606,7 @@ export function AssistantPanel() {
     if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
     setCompletionProofs([])
 
-    // Improvement 6: Voice announcement on task start
+    // Voice announcement on task start
     const appName = APP_LABEL[workflow.application] || workflow.application.toUpperCase()
     const workflowName = workflow.name
     const lvl1 = workflow.levels[0]?.voiceInstruction || workflow.levels[0]?.instruction || ''
@@ -415,6 +619,7 @@ export function AssistantPanel() {
     if (!workflow) return
     if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
     setErrorMessage(null)
+    setNeedsUserConfirmation(false)
     await executeLevel(workflow, currentLevelIndex, completionProofs)
   }, [workflow, currentLevelIndex, completionProofs, executeLevel])
 
@@ -434,6 +639,13 @@ export function AssistantPanel() {
     if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
     voiceService.stop()
     api?.hideOverlay?.()
+    if (activeTaskIdRef.current) {
+      taskPersistenceService.clearActiveTask(activeTaskIdRef.current)
+      activeTaskIdRef.current = null
+    }
+    setPendingTaskRestore(null)
+    setNeedsUserConfirmation(false)
+    setConfirmationReason('')
     setState('IDLE')
     setInputText('')
     setUserIntent('')
@@ -473,6 +685,14 @@ export function AssistantPanel() {
           </div>
 
           <div className="flex items-center gap-1.5 font-mono text-[10px]">
+            <ConnectivityBadge />
+            <button
+              onClick={() => setShowWorkflowModal(true)}
+              className="text-white/60 hover:text-white border border-white/20 hover:border-white px-1.5 py-0.5 rounded-[2px] transition-none"
+              title="Browse All 29 Supported Workflows"
+            >
+              ☰ TASKS
+            </button>
             <button
               onClick={() => setShowSettingsModal(true)}
               className="text-white/60 hover:text-white border border-white/20 hover:border-white px-1.5 py-0.5 rounded-[2px] transition-none"
@@ -503,6 +723,43 @@ export function AssistantPanel() {
             </button>
           </div>
         </div>
+
+        {/* Offline Banner when offline or degraded */}
+        {connectivityStatus.state !== 'ONLINE' && (
+          <OfflineBanner
+            onBrowseWorkflows={() => setShowWorkflowModal(true)}
+            onCheckConnection={() => connectivityManager.probe()}
+          />
+        )}
+
+        {/* Task Resume Banner if an in-progress task was saved locally */}
+        {pendingTaskRestore && state === 'IDLE' && (
+          <div className="no-drag bg-indigo-950/80 border-b border-indigo-500/40 px-3 py-2 flex items-center justify-between text-xs">
+            <div className="text-left text-indigo-200">
+              <span className="font-semibold text-white">Resume In-Progress Task:</span>
+              <span className="block text-[11px] text-white/90">{pendingTaskRestore.intent}</span>
+              <span className="text-[10px] text-indigo-300">Step {pendingTaskRestore.currentLevelIndex + 1} of {pendingTaskRestore.totalLevels}</span>
+            </div>
+            <div className="flex gap-1.5 items-center">
+              <button
+                onClick={() => handleRestoreTask(pendingTaskRestore)}
+                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-semibold"
+              >
+                Resume →
+              </button>
+              <button
+                onClick={async () => {
+                  await taskPersistenceService.clearActiveTask(pendingTaskRestore.taskId)
+                  setPendingTaskRestore(null)
+                }}
+                className="px-1.5 py-1 text-slate-400 hover:text-white text-xs"
+                title="Dismiss saved task"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Diagnostics Drawer (Live Collapsible [DBG] Panel) ─── */}
         {showDiagnostics && (
@@ -750,14 +1007,23 @@ export function AssistantPanel() {
                 </div>
 
                 <div className="border border-white/10 rounded-[3px] p-2.5 space-y-1.5 font-mono text-[10px]">
-                  <p className="text-white/40 uppercase tracking-widest text-[9px]">SUPPORTED WORKFLOWS (19 TOTAL)</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-white/40 uppercase tracking-widest text-[9px]">SUPPORTED WORKFLOWS (29 TOTAL • OFFLINE READY)</p>
+                    <button
+                      onClick={() => setShowWorkflowModal(true)}
+                      className="text-amber-400 hover:text-amber-300 text-[9px] underline font-sans"
+                    >
+                      Browse All 29 →
+                    </button>
+                  </div>
                   <div className="text-white/60 space-y-0.5 text-[9px]">
-                    <div>• CANVA: BG Remover, Animate, Add Text, Resize, Download</div>
-                    <div>• EXCEL: Charts, Cell Formatting, AutoSum, Freeze Row</div>
-                    <div>• WORD: Format Heading, Insert Table, Spell Check</div>
-                    <div>• POWERPOINT: Add Slide, Slide Transition, Insert Image</div>
-                    <div>• NOTEPAD: Find & Replace, Save As</div>
+                    <div>• CANVA: BG Remover, Animate, Add Text, Resize, Download, Elements, Flip</div>
+                    <div>• EXCEL: Charts, Cell Formatting, AutoSum, Freeze Row, Pivot, VLOOKUP</div>
+                    <div>• WORD: Format Heading, Insert Table, Spell Check, Margins, Header</div>
+                    <div>• POWERPOINT: Add Slide, Slide Transition, Insert Image, Present, Theme</div>
+                    <div>• NOTEPAD: Find & Replace, Save As, Word Wrap</div>
                     <div>• CALCULATOR: Basic Arithmetic, Scientific Mode</div>
+                    <div>• CHROME: Bookmark Page, Clear Browsing History</div>
                   </div>
                 </div>
 
@@ -894,6 +1160,33 @@ export function AssistantPanel() {
                   </div>
                 </div>
 
+                {/* Step Verification Confirmation when confidence is ambiguous */}
+                {needsUserConfirmation && (
+                  <div className="border border-amber-500/40 bg-amber-950/40 rounded-[3px] p-3 space-y-2 text-left">
+                    <div className="flex items-center gap-1.5 text-amber-400 font-semibold text-xs">
+                      <span>⚠</span>
+                      <span>STEP VERIFICATION CONFIRMATION</span>
+                    </div>
+                    <p className="text-white/80 text-[11px] font-sans">
+                      {confirmationReason || 'The action was partially detected. Please confirm you completed this step:'}
+                    </p>
+                    <div className="flex gap-2 pt-1 font-mono text-xs">
+                      <button
+                        onClick={handleManualAdvance}
+                        className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-1.5 rounded-[2px]"
+                      >
+                        ✓ CONFIRM & PROCEED
+                      </button>
+                      <button
+                        onClick={handleRescan}
+                        className="btn-outline px-3 py-1.5 text-white/70 hover:text-white rounded-[2px]"
+                      >
+                        ↺ RE-CHECK
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Target Information Card */}
                 {targetLock && (
                   <div className="border border-white/10 bg-white/[0.02] rounded-[3px] p-2.5 text-[11px] text-white/70 space-y-1">
@@ -952,6 +1245,24 @@ export function AssistantPanel() {
                     </label>
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {/* 5b. DISAMBIGUATION REQUIRED (Offline Candidate Picker) */}
+            {state === 'DISAMBIGUATION_REQUIRED' && targetLock?.disambiguationOptions && (
+              <motion.div
+                key="disambiguation-view"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-3 font-mono"
+              >
+                <CandidatePicker
+                  candidates={targetLock.disambiguationOptions}
+                  targetText={targetLock.text || currentLevel?.targetText || 'Control'}
+                  onSelectCandidate={handleSelectDisambiguationCandidate}
+                  onCancel={handleReset}
+                />
               </motion.div>
             )}
 
@@ -1096,7 +1407,12 @@ export function AssistantPanel() {
         </div>
       </div>
 
-      {/* ── Settings & Support Modals ────────────────────────────────────── */}
+      {/* ── Settings, Support, and Workflow Modals ──────────────────────── */}
+      <WorkflowSelectorModal
+        isOpen={showWorkflowModal}
+        onClose={() => setShowWorkflowModal(false)}
+        onSelectWorkflow={handleSelectDirectWorkflow}
+      />
       <SettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}

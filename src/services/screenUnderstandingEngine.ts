@@ -365,6 +365,8 @@ export class ScreenUnderstandingEngine {
       screenWidth: this.displayInfo?.screenWidth ?? 1920,
       screenHeight: this.displayInfo?.screenHeight ?? 1080,
       expiresAt: now + TARGET_LOCK_TTL_MS,
+      requiresUserChoice: resolution.telemetry?.requiresUserChoice,
+      disambiguationOptions: resolution.telemetry?.disambiguationOptions,
     }
 
     // ── Coordinate Telemetry Logging (Section 20 of Precision Spec) ─────────
@@ -410,7 +412,12 @@ export class ScreenUnderstandingEngine {
   async verifyLevelTransition(
     winInfo: WindowInfo,
     level: WorkflowLevel,
-  ): Promise<{ verified: boolean; proof: CompletionProof | null; reason?: string }> {
+  ): Promise<{
+    verified: boolean
+    proof: CompletionProof | null
+    confidenceState?: 'VERIFIED' | 'LIKELY_VERIFIED' | 'NEEDS_USER_CONFIRMATION' | 'UNVERIFIED'
+    reason?: string
+  }> {
     return stateTransitionEngine.verifyTransition(winInfo, level)
   }
 }

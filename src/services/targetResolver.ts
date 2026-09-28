@@ -19,6 +19,7 @@ import type {
 } from '../types/screenMap'
 import { coordinateManager } from './coordinateMapper'
 import { geminiService } from './gemini'
+import { connectivityManager } from './connectivityManager'
 
 // ─── Mathematical Geometry Helpers ──────────────────────────────────────────
 
@@ -365,35 +366,46 @@ export class TargetResolver {
     }
 
     let selectedCandidate = viable[0]
+    let requiresUserChoice = false
+    let disambiguationOptions: TargetCandidate[] = []
 
     // 4. Disambiguation:
-    // If top 2 candidates have very close scores (score delta <= 0.12), call Gemini to pick index
-    if (viable.length >= 2 && screenshot) {
+    // If top 2 candidates have very close scores (score delta <= 0.15)
+    if (viable.length >= 2) {
       const scoreDelta = (viable[0].finalScore ?? 0) - (viable[1].finalScore ?? 0)
-      if (scoreDelta <= 0.12) {
-        try {
-          const disambigPayload = viable.slice(0, 4).map((c, i) => ({
-            index: i,
-            text: c.text,
-            x: c.x,
-            y: c.y,
-            width: c.width,
-            height: c.height,
-          }))
+      if (scoreDelta <= 0.15) {
+        if (connectivityManager.isOnline() && screenshot) {
+          try {
+            const disambigPayload = viable.slice(0, 4).map((c, i) => ({
+              index: i,
+              text: c.text,
+              x: c.x,
+              y: c.y,
+              width: c.width,
+              height: c.height,
+            }))
 
-          const choice = await geminiService.disambiguateCandidates({
-            candidates: disambigPayload,
-            levelTitle: targetText,
-            targetText,
-            targetDescription: params.targetDescription || targetText,
-            screenshot,
-          })
+            const choice = await geminiService.disambiguateCandidates({
+              candidates: disambigPayload,
+              levelTitle: targetText,
+              targetText,
+              targetDescription: params.targetDescription || targetText,
+              screenshot,
+            })
 
-          if (choice && choice.chosenIndex !== undefined && viable[choice.chosenIndex]) {
-            selectedCandidate = viable[choice.chosenIndex]
+            if (choice && choice.chosenIndex !== undefined && viable[choice.chosenIndex]) {
+              selectedCandidate = viable[choice.chosenIndex]
+            }
+          } catch (e) {
+            // Offline conservative disambiguation fallback on network error: DO NOT GUESS
+            requiresUserChoice = true
+            disambiguationOptions = viable.slice(0, 3)
           }
-        } catch (e) {
-          // Fall back to top scored candidate on network error
+        } else {
+          // Offline Mode: When score delta <= 0.15, candidates are genuinely ambiguous.
+          // DO NOT GUESS. Show user the candidates and allow manual selection.
+          requiresUserChoice = true
+          disambiguationOptions = viable.slice(0, 3)
         }
       }
     }
@@ -441,6 +453,8 @@ export class TargetResolver {
       confidence: stabilized.confidence,
       score: selectedCandidate.finalScore,
       candidateCount: viable.length,
+      requiresUserChoice,
+      disambiguationOptions,
     }
 
     return {

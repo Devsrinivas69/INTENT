@@ -143,6 +143,8 @@ export interface TargetLock {
   screenWidth: number            // Screen dimensions at lock time
   screenHeight: number           // Screen dimensions at lock time
   expiresAt: number              // Unix ms when this lock becomes stale (default: 30s)
+  requiresUserChoice?: boolean   // Offline conservative disambiguation flag
+  disambiguationOptions?: TargetCandidate[]
 }
 
 export interface TargetNotFound {
@@ -162,6 +164,10 @@ export interface TargetValidationResult {
   candidate?: TargetCandidate
 }
 
+// ─── Verification Confidence States ──────────────────────────────────────────
+
+export type VerificationConfidence = 'VERIFIED' | 'LIKELY_VERIFIED' | 'NEEDS_USER_CONFIRMATION' | 'UNVERIFIED'
+
 // ─── Completion Proof (Mandatory Evidence for Level Completion) ──────────────
 
 export interface CompletionProof {
@@ -171,6 +177,7 @@ export interface CompletionProof {
   stateChanged: boolean
   evidence: string[]
   confidence: number
+  verificationConfidence?: VerificationConfidence
   method: string
   timestamp: number
   bounds?: DesktopBounds
@@ -232,4 +239,6 @@ export interface OverlayPayload {
   isDev?: boolean
   debugMode?: boolean
   debugCandidates?: TargetCandidate[]
+  requiresUserChoice?: boolean
+  disambiguationOptions?: TargetCandidate[]
 }

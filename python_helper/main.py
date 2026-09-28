@@ -39,6 +39,7 @@ from opencv_detector import (
 from screen_map_builder import (
     build_screen_map, find_candidates_in_map
 )
+from local_classifier import classify_intent_locally
 
 
 def generate_startup_report() -> dict:
@@ -353,7 +354,17 @@ def process(cmd: dict) -> dict:
                     'method': 'screen_diff',
                 }
 
+        # ── LOCAL INTENT CLASSIFICATION (Semantic / Zero-Cloud) ───────────────
+        elif action == 'classify_semantic':
+            text = cmd.get('text', '')
+            return classify_intent_locally(text)
+
         return {'completed': False, 'confidence': 0.1, 'evidence': 'Waiting for user action'}
+
+    # ── classify_semantic standalone action ──────────────────────────────────
+    elif action == 'classify_semantic':
+        text = cmd.get('text', '')
+        return classify_intent_locally(text)
 
     return {'error': f'Unknown action: {action}'}
 

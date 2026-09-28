@@ -110,6 +110,48 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('overlay:toggle-debug', handler)
   },
 
+  // ── Connectivity & Offline Mode ──────────────────────────────────────────
+  getConnectivityStatus: (): Promise<any> =>
+    ipcRenderer.invoke('connectivity:get-status'),
+
+  probeConnectivity: (): Promise<any> =>
+    ipcRenderer.invoke('connectivity:probe'),
+
+  onConnectivityChanged: (callback: (status: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, status: any) => callback(status)
+    ipcRenderer.on('connectivity:changed', handler)
+    return () => ipcRenderer.removeListener('connectivity:changed', handler)
+  },
+
+  // ── Task Persistence & Offline Queue ───────────────────────────────────────
+  saveTask: (task: any): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('task:save', task),
+
+  loadActiveTask: (): Promise<any | null> =>
+    ipcRenderer.invoke('task:load-active'),
+
+  clearActiveTask: (taskId?: string): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('task:clear-active', taskId),
+
+  listTasks: (): Promise<any[]> =>
+    ipcRenderer.invoke('task:list'),
+
+  enqueueAction: (action: any): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('queue:enqueue', action),
+
+  getQueuedActions: (): Promise<any[]> =>
+    ipcRenderer.invoke('queue:get-all'),
+
+  updateQueuedAction: (id: string, updates: any): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('queue:update', id, updates),
+
+  clearQueuedActions: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('queue:clear'),
+
+  // ── Local Semantic Classification ──────────────────────────────────────────
+  classifyLocalSemantic: (text: string): Promise<any> =>
+    ipcRenderer.invoke('intent:classify-semantic', text),
+
   // ── Platform ───────────────────────────────────────────────────────────────
   platform: process.platform,
 })

@@ -7,6 +7,7 @@ import readline from 'readline'
 import dotenv from 'dotenv'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { WebSocketServer, WebSocket } from 'ws'
+import { connectivityManager } from './connectivityManager'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -93,6 +94,58 @@ function saveConfig(cfg: IntentConfig): void {
     writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf8')
   } catch (e) {
     console.error('[INTENT] Failed to save config:', e)
+  }
+}
+
+// ─── Persistent Task State & Action Queue Management ─────────────────────────
+
+function getTasksPath(): string {
+  return join(app.getPath('userData'), 'intent_tasks.json')
+}
+
+function loadTasks(): any[] {
+  try {
+    const p = getTasksPath()
+    if (existsSync(p)) {
+      return JSON.parse(readFileSync(p, 'utf8'))
+    }
+  } catch (e) {
+    console.warn('[INTENT] Could not load stored tasks:', e)
+  }
+  return []
+}
+
+function saveTasks(tasks: any[]): void {
+  try {
+    const p = getTasksPath()
+    writeFileSync(p, JSON.stringify(tasks, null, 2), 'utf8')
+  } catch (e) {
+    console.error('[INTENT] Failed to save tasks:', e)
+  }
+}
+
+function getQueuePath(): string {
+  return join(app.getPath('userData'), 'intent_queue.json')
+}
+
+function loadQueue(): any[] {
+  try {
+    const p = getQueuePath()
+    if (existsSync(p)) {
+      return JSON.parse(readFileSync(p, 'utf8'))
+    }
+  } catch (e) {
+    console.warn('[INTENT] Could not load queued actions:', e)
+  }
+  return []
+}
+
+function saveQueue(queue: any[]): void {
+  try {
+    const p = getQueuePath()
+    writeFileSync(p, JSON.stringify(queue, null, 2), 'utf8')
+  } catch (e) {
+    console.error('[INTENT] Failed to save queued actions:', e)
   }
 }
 
@@ -237,6 +290,7 @@ function sendPythonCommand(cmd: Record<string, any>): Promise<any> {
       get_window_info: 6000,
       bring_to_foreground: 6000,
       ping: 4000,
+      classify_semantic: 5000,
     }
     const timeoutMs = timeoutMap[action] ?? 15000
 
@@ -515,6 +569,16 @@ app.whenReady().then(async () => {
   createPanelWindow()
   createFloatingWindow()
   startupLog('All windows created')
+
+  // Broadcast connectivity updates to all active windows
+  connectivityManager.on('changed', (status) => {
+    if (panelWin && !panelWin.isDestroyed()) {
+      panelWin.webContents.send('connectivity:changed', status)
+    }
+    if (overlayWin && !overlayWin.isDestroyed()) {
+      overlayWin.webContents.send('connectivity:changed', status)
+    }
+  })
 
   try {
     globalShortcut.register('CommandOrControl+Shift+D', () => {
@@ -831,17 +895,32 @@ function localClassify(text: string) {
   }
 }
 
-// ─── IPC: Gemini — Intent Classification ─────────────────────────────────────
+// ─── IPC: Layered Intent Classification (Exact -> Semantic -> Gemini) ────────
 
-ipcMain.handle('gemini:classify', async (_, text: string) => {
-  if (!genAI) {
-    return localClassify(text)
+async function classifyIntentLayered(text: string): Promise<any> {
+  // Layer 1: Exact / keyword match
+  const keywordResult = localClassify(text)
+  if (keywordResult.supported && (keywordResult.confidence ?? 0) >= 0.90) {
+    return keywordResult
   }
 
+  // Layer 2: Local semantic matcher (Python helper)
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const semanticResult = await sendPythonCommand({ action: 'classify_semantic', text })
+    if (semanticResult && semanticResult.supported && (semanticResult.confidence ?? 0) >= 0.70) {
+      return semanticResult
+    }
+  } catch (e) {
+    console.warn('[INTENT] Local semantic classifier error:', e)
+  }
 
-    const prompt = `You are an intent classifier for INTENT, a Windows desktop AI guidance assistant.
+  // Layer 3: Gemini (Strictly if ONLINE)
+  if (connectivityManager.isOnline() && genAI) {
+    try {
+      const startTime = Date.now()
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+
+      const prompt = `You are an intent classifier for INTENT, a Windows desktop AI guidance assistant.
 Classify the user's request into exactly one of the supported applications and tasks:
 
 CANVA:
@@ -896,13 +975,32 @@ RESPONSE FORMAT (JSON ONLY, NO MARKDOWN):
 If supported: {"supported":true,"application":"canva","task":"remove_background","confidence":0.95}
 If unsupported: {"supported":false,"message":"Unsupported request. INTENT supports Canva, Excel, Word, PowerPoint, Notepad, Calculator, Chrome, Gmail, and YouTube workflows."}`
 
-    const result = await model.generateContent(prompt)
-    const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
-    return JSON.parse(raw)
-  } catch (err) {
-    console.warn('[INTENT] Gemini classify error, using local classifier:', err)
-    return localClassify(text)
+      const result = await model.generateContent(prompt)
+      connectivityManager.recordApiSuccess(Date.now() - startTime)
+      const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
+      return JSON.parse(raw)
+    } catch (err: any) {
+      connectivityManager.recordApiFailure(err?.message || 'Gemini classification failed')
+      console.warn('[INTENT] Gemini classify error, using local fallback:', err)
+    }
   }
+
+  // Layer 4: Fallback explanation
+  return {
+    supported: false,
+    message: connectivityManager.isOnline()
+      ? 'INTENT supports Canva, Excel, Word, PowerPoint, Notepad, Calculator, Chrome, Gmail, and YouTube workflows.'
+      : 'Offline Mode: Could not confidently match goal. Please choose a workflow or check your wording.',
+    isOffline: !connectivityManager.isOnline(),
+  }
+}
+
+ipcMain.handle('gemini:classify', async (_, text: string) => {
+  return classifyIntentLayered(text)
+})
+
+ipcMain.handle('intent:classify-semantic', async (_, text: string) => {
+  return sendPythonCommand({ action: 'classify_semantic', text })
 })
 
 const CANVA_LAYOUT_SCHEMA = `
@@ -936,11 +1034,12 @@ ipcMain.handle('gemini:disambiguate', async (_, params: {
   application: string
   screenshot: string | null
 }) => {
-  if (!genAI || !params.candidates.length) {
-    return { chosenIndex: 0, reasoning: 'Fallback to first candidate' }
+  if (!connectivityManager.isOnline() || !genAI || !params.candidates.length) {
+    return { chosenIndex: 0, reasoning: 'Offline mode: local candidate selection fallback' }
   }
 
   try {
+    const startTime = Date.now()
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
     const candidateList = params.candidates
@@ -975,9 +1074,11 @@ RESPONSE FORMAT (JSON ONLY):
     }
 
     const result = await model.generateContent(contents)
+    connectivityManager.recordApiSuccess(Date.now() - startTime)
     const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
     return JSON.parse(raw)
-  } catch (err) {
+  } catch (err: any) {
+    connectivityManager.recordApiFailure(err?.message || 'Gemini disambiguation error')
     console.warn('[INTENT] Gemini disambiguation error:', err)
     return { chosenIndex: 0, reasoning: 'Fallback due to error' }
   }
@@ -992,9 +1093,12 @@ ipcMain.handle('gemini:find-target-vision', async (_, params: {
   targetText: string
   targetDescription: string
 }) => {
-  if (!genAI) return { found: false, confidence: 0 }
+  if (!connectivityManager.isOnline() || !genAI) {
+    return { found: false, confidence: 0, reason: 'Offline mode: vision model bypassed' }
+  }
 
   try {
+    const startTime = Date.now()
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
     const base64 = params.screenshot.replace(/^data:image\/(png|jpeg|webp);base64,/, '')
     const layoutContext = params.application === 'excel' ? EXCEL_LAYOUT_SCHEMA : CANVA_LAYOUT_SCHEMA
@@ -1018,6 +1122,7 @@ RESPONSE FORMAT (JSON ONLY):
       prompt,
       { inlineData: { data: base64, mimeType: 'image/png' } },
     ])
+    connectivityManager.recordApiSuccess(Date.now() - startTime)
     const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
     const parsed = JSON.parse(raw)
 
@@ -1043,7 +1148,8 @@ RESPONSE FORMAT (JSON ONLY):
     }
 
     return parsed
-  } catch (err) {
+  } catch (err: any) {
+    connectivityManager.recordApiFailure(err?.message || 'Gemini vision error')
     console.warn('[INTENT] Gemini target vision error:', err)
     return { found: false, confidence: 0 }
   }
@@ -1057,9 +1163,12 @@ ipcMain.handle('gemini:verify-state', async (_, params: {
   completionCondition: string
   application: string
 }) => {
-  if (!genAI) return { completed: false, confidence: 0, evidence: 'No API key' }
+  if (!connectivityManager.isOnline() || !genAI) {
+    return { completed: false, confidence: 0, evidence: 'Offline mode: state verification handled locally' }
+  }
 
   try {
+    const startTime = Date.now()
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
     const base64 = params.screenshotAfter.replace(/^data:image\/(png|jpeg|webp);base64,/, '')
     const layoutContext = params.application === 'excel' ? EXCEL_LAYOUT_SCHEMA : CANVA_LAYOUT_SCHEMA
@@ -1084,11 +1193,126 @@ RESPONSE FORMAT (JSON ONLY):
       prompt,
       { inlineData: { data: base64, mimeType: 'image/png' } },
     ])
+    connectivityManager.recordApiSuccess(Date.now() - startTime)
     const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
     return JSON.parse(raw)
-  } catch (err) {
+  } catch (err: any) {
+    connectivityManager.recordApiFailure(err?.message || 'Gemini verify-state error')
     console.warn('[INTENT] Gemini state verify error:', err)
     return { completed: false, confidence: 0, evidence: String(err) }
+  }
+})
+
+// ─── IPC: Connectivity State Management ──────────────────────────────────────
+
+ipcMain.handle('connectivity:get-status', () => {
+  return connectivityManager.getStatus()
+})
+
+ipcMain.handle('connectivity:probe', async () => {
+  return connectivityManager.probe()
+})
+
+// ─── IPC: Task Persistence & Action Queue ────────────────────────────────────
+
+ipcMain.handle('task:save', (_, task: any) => {
+  try {
+    const tasks = loadTasks()
+    const index = tasks.findIndex((t: any) => t.taskId === task.taskId)
+    const updatedTask = {
+      ...task,
+      updatedAt: Date.now(),
+    }
+    if (index >= 0) {
+      tasks[index] = updatedTask
+    } else {
+      tasks.unshift(updatedTask)
+    }
+    // Retain up to 20 recent tasks
+    saveTasks(tasks.slice(0, 20))
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) }
+  }
+})
+
+ipcMain.handle('task:load-active', () => {
+  try {
+    const tasks = loadTasks()
+    // Return most recent task that was not explicitly marked complete/cleared
+    const active = tasks.find((t: any) => !t.cleared && t.currentLevelIndex < t.totalLevels)
+    return active || null
+  } catch {
+    return null
+  }
+})
+
+ipcMain.handle('task:clear-active', (_, taskId?: string) => {
+  try {
+    const tasks = loadTasks()
+    if (taskId) {
+      const task = tasks.find((t: any) => t.taskId === taskId)
+      if (task) task.cleared = true
+    } else if (tasks.length > 0) {
+      tasks[0].cleared = true
+    }
+    saveTasks(tasks)
+    return { success: true }
+  } catch {
+    return { success: false }
+  }
+})
+
+ipcMain.handle('task:list', () => {
+  return loadTasks()
+})
+
+ipcMain.handle('queue:enqueue', (_, action: any) => {
+  try {
+    const queue = loadQueue()
+    // Prevent duplicate actions with same idempotencyKey
+    const exists = queue.some((a: any) => a.idempotencyKey && a.idempotencyKey === action.idempotencyKey)
+    if (exists) {
+      return { success: true, message: 'Action already queued' }
+    }
+    queue.push({
+      ...action,
+      createdAt: action.createdAt || Date.now(),
+      attemptCount: action.attemptCount || 0,
+      status: action.status || 'PENDING',
+    })
+    saveQueue(queue)
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) }
+  }
+})
+
+ipcMain.handle('queue:get-all', () => {
+  return loadQueue()
+})
+
+ipcMain.handle('queue:update', (_, id: string, updates: any) => {
+  try {
+    const queue = loadQueue()
+    const item = queue.find((a: any) => a.id === id)
+    if (item) {
+      Object.assign(item, updates, { lastAttemptAt: Date.now() })
+      saveQueue(queue)
+      return { success: true }
+    }
+    return { success: false }
+  } catch {
+    return { success: false }
+  }
+})
+
+ipcMain.handle('queue:clear', () => {
+  try {
+    saveQueue([])
+    return { success: true }
+  } catch {
+    return { success: false }
   }
 })
 

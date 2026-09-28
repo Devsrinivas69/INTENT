@@ -17,24 +17,24 @@ export class GeminiService {
   // ── Intent Classification ──────────────────────────────────────────────────
 
   async classifyIntent(text: string): Promise<IntentResult> {
-    const raw = await api.classifyIntent(text)
-    const result = IntentResultSchema.safeParse(raw)
-    if (result.success) return result.data
+    try {
+      const raw = await api.classifyIntent(text)
+      if (raw && typeof raw === 'object' && 'supported' in raw) {
+        return raw as IntentResult
+      }
+      const result = IntentResultSchema.safeParse(raw)
+      if (result.success) return result.data
+    } catch {
+      // Try local semantic fallback via IPC
+      try {
+        const local = await api.classifyLocalSemantic?.(text)
+        if (local && local.supported) return local as IntentResult
+      } catch {}
+    }
 
-    // Heuristic fallback
-    const lower = text.toLowerCase()
-    if (lower.includes('background') || lower.includes('bg') || lower.includes('remove')) {
-      return { supported: true, application: 'canva', task: 'remove_background', confidence: 0.95 }
-    }
-    if (lower.includes('animat') || lower.includes('motion') || lower.includes('fade')) {
-      return { supported: true, application: 'canva', task: 'add_animation', confidence: 0.95 }
-    }
-    if (lower.includes('chart') || lower.includes('graph') || lower.includes('excel') || lower.includes('data')) {
-      return { supported: true, application: 'excel', task: 'create_chart', confidence: 0.95 }
-    }
     return {
       supported: false,
-      message: 'This MVP supports Canva background removal, Canva animation, and Excel chart creation.',
+      message: 'Could not classify request. INTENT supports Canva, Excel, Word, PowerPoint, Notepad, Calculator, Chrome, Gmail, and YouTube workflows.',
     }
   }
 

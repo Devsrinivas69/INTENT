@@ -48,13 +48,18 @@ export class StateTransitionEngine {
   async verifyTransition(
     winInfo: WindowInfo,
     level: WorkflowLevel,
-  ): Promise<{ verified: boolean; proof: CompletionProof | null; reason?: string }> {
+  ): Promise<{
+    verified: boolean
+    proof: CompletionProof | null
+    confidenceState?: 'VERIFIED' | 'LIKELY_VERIFIED' | 'NEEDS_USER_CONFIRMATION' | 'UNVERIFIED'
+    reason?: string
+  }> {
     try {
       const baseline = this.baselineMap.get(level.id)
       const screenshotAfter: string | null = await api.captureScreen()
 
       if (!screenshotAfter) {
-        return { verified: false, proof: null, reason: 'Failed to capture screen' }
+        return { verified: false, proof: null, confidenceState: 'UNVERIFIED', reason: 'Failed to capture screen' }
       }
 
       // Call Python helper verification
@@ -68,30 +73,62 @@ export class StateTransitionEngine {
         screenshot_after: screenshotAfter,
       })
 
-      if (raw?.completed && raw.confidence >= 0.70) {
+      const confidence = raw?.confidence ?? 0
+      const isCompleted = !!raw?.completed
+
+      if (isCompleted && confidence >= 0.85) {
         const proof: CompletionProof = {
           levelId: level.id,
           levelNumber: level.levelNumber,
           actionDetected: true,
           stateChanged: true,
           evidence: [raw.evidence || 'Verified state transition'],
-          confidence: raw.confidence,
+          confidence,
+          verificationConfidence: 'VERIFIED',
           method: raw.method || 'local_transition',
           timestamp: Date.now(),
           bounds: raw.bounds || baseline?.targetLock.bounds,
         }
 
-        console.log(`[StateTransitionEngine] Level ${level.levelNumber} PROOF GENERATED:`, proof)
-        return { verified: true, proof }
+        console.log(`[StateTransitionEngine] Level ${level.levelNumber} PROOF GENERATED (VERIFIED):`, proof)
+        return { verified: true, proof, confidenceState: 'VERIFIED' }
+      }
+
+      if (isCompleted && confidence >= 0.70) {
+        const proof: CompletionProof = {
+          levelId: level.id,
+          levelNumber: level.levelNumber,
+          actionDetected: true,
+          stateChanged: true,
+          evidence: [raw.evidence || 'Likely verified state transition'],
+          confidence,
+          verificationConfidence: 'LIKELY_VERIFIED',
+          method: raw.method || 'local_transition',
+          timestamp: Date.now(),
+          bounds: raw.bounds || baseline?.targetLock.bounds,
+        }
+
+        console.log(`[StateTransitionEngine] Level ${level.levelNumber} PROOF GENERATED (LIKELY_VERIFIED):`, proof)
+        return { verified: true, proof, confidenceState: 'LIKELY_VERIFIED' }
+      }
+
+      if (isCompleted && confidence >= 0.50) {
+        return {
+          verified: false,
+          proof: null,
+          confidenceState: 'NEEDS_USER_CONFIRMATION',
+          reason: raw?.evidence || 'Partial state change detected — please confirm step completion',
+        }
       }
 
       return {
         verified: false,
         proof: null,
+        confidenceState: 'UNVERIFIED',
         reason: raw?.evidence || 'Waiting for user action',
       }
     } catch (err) {
-      return { verified: false, proof: null, reason: String(err) }
+      return { verified: false, proof: null, confidenceState: 'UNVERIFIED', reason: String(err) }
     }
   }
 
