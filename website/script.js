@@ -2,7 +2,7 @@
 // APPS SCRIPT CONFIG
 // Paste your Web App URL here after deploying (see scripts/apps_script.gs)
 // ==========================================================================
-const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxGEZvGEtofxdAjjqet2C-SKE13AmR5PsV7WwOT6DJqKCcn1sDtI3djIe0V4Jpc-n_4/exec';
 
 const DIRECT_DOWNLOAD_URL = 'https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe';
 
