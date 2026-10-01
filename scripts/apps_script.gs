@@ -1,50 +1,69 @@
 /**
  * INTENT Website Backend — Google Apps Script
  * =============================================================================
- * SETUP (one-time, ~3 minutes):
- *   1. Open Google Sheets: https://sheets.google.com → create a new blank sheet
- *   2. In that sheet: Extensions → Apps Script
- *   3. Delete all default code, paste this entire file
- *   4. Click Deploy → New Deployment
- *      Type: Web App | Execute as: Me | Who has access: Anyone
- *   5. Click Deploy → COPY the Web App URL
- *   6. Paste that URL into website/script.js  as  APPS_SCRIPT_URL
+ * PASTE THIS CODE, THEN:
+ *   1. In the function selector dropdown (top center), choose  testSetup
+ *   2. Click ▶ Run  →  click "Review Permissions" → choose your Gmail account
+ *      → click "Advanced" → "Go to INTENT (unsafe)" → Allow
+ *   3. Check Execution Log — should say "testSetup OK"
+ *   4. Deploy → Manage Deployments → Edit (pencil icon) → Version: New version → Deploy
+ *   DONE. Emails will now send correctly.
  * =============================================================================
  */
 
-const DOWNLOAD_URL  = 'https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe';
-const ADMIN_EMAIL   = 'reddykph@gmail.com';
-const ADMIN_KEY     = 'Reddy2005@clk';
-const SHEET_NAME    = 'Registrations';
+const DOWNLOAD_URL = 'https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe';
+const ADMIN_EMAIL  = 'reddykph@gmail.com';
+const ADMIN_KEY    = 'Reddy2005@clk';
+const SHEET_NAME   = 'Registrations';
 
-// POST /exec — register email, send download link via Gmail ──────────────────
+// ── RUN THIS ONCE to authorize Gmail + Sheets permissions ────────────────────
+function testSetup() {
+  // 1. Test Gmail permission
+  GmailApp.sendEmail(
+    ADMIN_EMAIL,
+    '[INTENT Admin] Authorization Test — Setup Complete',
+    'GmailApp authorization is working.\n\nYour INTENT backend is ready to send download links.\n\nURL: ' + DOWNLOAD_URL
+  );
+  Logger.log('testSetup OK — Gmail authorized and working.');
+
+  // 2. Test Sheets permission
+  const sheet = getSheet();
+  Logger.log('testSetup OK — Sheet "' + sheet.getName() + '" ready. Row count: ' + sheet.getLastRow());
+}
+
+// ── POST /exec — register email + send download link ────────────────────────
 function doPost(e) {
   try {
-    // Read from form-encoded body (no-cors fetch with x-www-form-urlencoded)
-    // Fall back to JSON body for direct API calls
-    let email, source, ua;
+    let email = '', source = 'website', ua = '';
+
+    // Priority 1: form-encoded body (from browser no-cors fetch)
     if (e.parameter && e.parameter.email) {
-      email  = String(e.parameter.email  || '').trim().toLowerCase();
+      email  = String(e.parameter.email).trim().toLowerCase();
       source = String(e.parameter.source || 'website').trim();
       ua     = String(e.parameter.ua     || '').substring(0, 300);
-    } else if (e.postData && e.postData.contents) {
+    }
+    // Priority 2: raw post body (JSON or URL-encoded text)
+    else if (e.postData && e.postData.contents) {
+      const raw = e.postData.contents;
+      // Try JSON first
       try {
-        const data = JSON.parse(e.postData.contents);
-        email  = String(data.email  || '').trim().toLowerCase();
-        source = String(data.source || 'website').trim();
-        ua     = String(data.ua     || '').substring(0, 300);
+        const j = JSON.parse(raw);
+        email  = String(j.email  || '').trim().toLowerCase();
+        source = String(j.source || 'website').trim();
+        ua     = String(j.ua     || '').substring(0, 300);
       } catch (_) {
-        const params = new URLSearchParams(e.postData.contents);
-        email  = String(params.get('email')  || '').trim().toLowerCase();
-        source = String(params.get('source') || 'website').trim();
-        ua     = String(params.get('ua')     || '').substring(0, 300);
+        // Try URL-encoded
+        raw.split('&').forEach(pair => {
+          const [k, v] = pair.split('=').map(decodeURIComponent);
+          if (k === 'email')  email  = String(v || '').trim().toLowerCase();
+          if (k === 'source') source = String(v || 'website').trim();
+          if (k === 'ua')     ua     = String(v || '').substring(0, 300);
+        });
       }
-    } else {
-      email = ''; source = 'website'; ua = '';
     }
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-      return jsonOut({ success: false, error: 'Invalid email' });
+      return jsonOut({ success: false, error: 'Invalid email: ' + email });
     }
 
     const sheet  = getSheet();
@@ -54,7 +73,7 @@ function doPost(e) {
       sheet.appendRow([new Date().toISOString(), email, source, ua]);
     }
 
-    // Always send download link (even on duplicate)
+    // Send download link to user (always, even duplicate)
     GmailApp.sendEmail(
       email,
       '[ INTENT ] Your Download Link is Ready',
@@ -62,25 +81,27 @@ function doPost(e) {
       { name: 'Srinivas Reddy — INTENT Developer' }
     );
 
-    // Admin notification only for new registrations
+    // Notify admin (new registrations only)
     if (!exists) {
       GmailApp.sendEmail(
         ADMIN_EMAIL,
         '[INTENT Admin] New Registration: ' + email,
-        'New download registration\n\nEmail  : ' + email + '\nTime   : ' +
-        new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + '\nSource : ' + source
+        'New download registration\n\nEmail  : ' + email +
+        '\nTime   : ' + new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) +
+        '\nSource : ' + source
       );
     }
 
     return jsonOut({ success: true, isNew: !exists });
   } catch (err) {
+    Logger.log('doPost ERROR: ' + err.toString());
     return jsonOut({ success: false, error: String(err) });
   }
 }
 
-// GET /exec?key=<ADMIN_KEY> — fetch all registrations for admin panel ─────────
+// ── GET /exec?key=<ADMIN_KEY> — admin analytics ──────────────────────────────
 function doGet(e) {
-  const key = String(e.parameter.key || '');
+  const key = String((e.parameter && e.parameter.key) || '');
   if (key !== ADMIN_KEY) {
     return jsonOut({ success: false, error: 'Unauthorized' });
   }
@@ -104,7 +125,7 @@ function doGet(e) {
       ua        : String(r[3] || '')
     }));
 
-  const today = data.filter(r => r.timestamp.startsWith(todayStr)).length;
+  const today = data.filter(r => String(r.timestamp).startsWith(todayStr)).length;
   data.reverse(); // newest first
 
   return jsonOut({ success: true, total: data.length, today: today, data: data });
@@ -112,7 +133,27 @@ function doGet(e) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let ss = null;
+
+  // Case 1: Script opened from inside a Google Sheet (Extensions → Apps Script)
+  try { ss = SpreadsheetApp.getActiveSpreadsheet(); } catch (_) {}
+
+  // Case 2: Standalone script — reuse previously created spreadsheet
+  if (!ss) {
+    const props    = PropertiesService.getScriptProperties();
+    const savedId  = props.getProperty('SPREADSHEET_ID');
+    if (savedId) {
+      try { ss = SpreadsheetApp.openById(savedId); } catch (_) {}
+    }
+  }
+
+  // Case 3: No spreadsheet at all — create one automatically
+  if (!ss) {
+    ss = SpreadsheetApp.create('INTENT Email Registrations');
+    PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
+    Logger.log('Created new spreadsheet: ' + ss.getUrl());
+  }
+
   let sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
@@ -139,14 +180,18 @@ function buildUserEmail(email) {
     '',
     'Thanks for your interest in INTENT — the first intent-driven desktop guidance assistant for Windows.',
     '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
     'YOUR DIRECT DOWNLOAD LINK:',
     DOWNLOAD_URL,
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
     '',
-    '  SHA-256 Verified | Version 1.0.0 | 78 MB | Windows 10/11 64-bit | MIT Licensed',
+    '  ✓ SHA-256 Verified  |  v1.0.0  |  78 MB',
+    '  ✓ Windows 10 (1903+) / Windows 11  64-bit',
+    '  ✓ MIT Open Source — Free Forever',
     '',
     'SETUP IN 3 STEPS:',
     '  1. Run INTENT-Setup-1.0.0.exe',
-    '  2. Get your FREE Gemini API key at https://aistudio.google.com/app/apikey',
+    '  2. Get your FREE Gemini key at https://aistudio.google.com/app/apikey',
     '     (No credit card — 15 req/min free forever)',
     '  3. Press Alt+Space in INTENT, paste your key, and start talking!',
     '',
@@ -154,6 +199,7 @@ function buildUserEmail(email) {
     '',
     '— Srinivas Reddy | INTENT Developer',
     '  https://devsrinivas69.github.io/INTENT/',
+    '  https://github.com/Devsrinivas69/INTENT',
   ].join('\n');
 }
 
