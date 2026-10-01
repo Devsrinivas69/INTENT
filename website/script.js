@@ -1,72 +1,125 @@
 // ==========================================================================
-// DOWNLOAD LINK CONFIG
+// APPS SCRIPT CONFIG
+// Paste your Web App URL here after deploying (see scripts/apps_script.gs)
 // ==========================================================================
-const DOWNLOAD_CONFIG = {
-  downloadUrl: 'https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe'
-};
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
+
+const DIRECT_DOWNLOAD_URL = 'https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe';
 
 // ==========================================================================
-// DOWNLOAD MODAL CONTROLLER
+// EMAIL GATE MODAL CONTROLLER
 // ==========================================================================
-(function initDownloadModal() {
-  function openModal() {
-    const modal = document.getElementById('emailGateModal');
-    if (!modal) return;
-    modal.style.display = 'flex';
-    modal.setAttribute('aria-hidden', 'false');
+(function initEmailGate() {
+  const STATES = ['emailGateIdle', 'emailGateLoading', 'emailGateSuccess', 'emailGateErrorState'];
+
+  function showState(id) {
+    STATES.forEach(s => {
+      const el = document.getElementById(s);
+      if (el) el.style.display = (s === id) ? '' : 'none';
+    });
   }
 
-  function closeModal() {
+  function open() {
+    const modal    = document.getElementById('emailGateModal');
+    const input    = document.getElementById('emailGateInput');
+    const errorEl  = document.getElementById('emailGateError');
+    const submitBtn = document.getElementById('emailGateSubmitBtn');
+    if (!modal) return;
+    showState('emailGateIdle');
+    if (input)     { input.value = ''; input.disabled = false; }
+    if (errorEl)   errorEl.textContent = '';
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '[ SEND ME THE DOWNLOAD LINK \u2192 ]'; }
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => { if (input) input.focus(); }, 80);
+  }
+
+  function close() {
     const modal = document.getElementById('emailGateModal');
     if (!modal) return;
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    const modal          = document.getElementById('emailGateModal');
-    const overlay        = document.getElementById('emailGateOverlay');
-    const closeBtn       = document.getElementById('closeEmailGateBtn');
-    const copyBtn        = document.getElementById('copyDownloadLinkBtn');
-    const navDownloadBtn = document.getElementById('navDownloadBtn');
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const input    = document.getElementById('emailGateInput');
+    const errorEl  = document.getElementById('emailGateError');
+    const submitBtn = document.getElementById('emailGateSubmitBtn');
+    const email    = input ? input.value.trim() : '';
 
-    document.querySelectorAll('.open-email-gate').forEach(btn => {
-      btn.addEventListener('click', openModal);
-    });
-    if (navDownloadBtn) navDownloadBtn.addEventListener('click', openModal);
-    if (closeBtn)       closeBtn.addEventListener('click', closeModal);
-    if (overlay)        overlay.addEventListener('click', closeModal);
+    // Client-side validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      if (errorEl) errorEl.textContent = '\u26a0 Please enter a valid email address.';
+      if (input) input.focus();
+      return;
+    }
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
-        closeModal();
-      }
-    });
+    if (errorEl)   errorEl.textContent = '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '[ SENDING... ]'; }
+    if (input)     input.disabled = true;
+    showState('emailGateLoading');
 
-    // Copy download link to clipboard
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(DOWNLOAD_CONFIG.downloadUrl).then(() => {
-          const original = copyBtn.textContent;
-          copyBtn.textContent = '[ ✓ COPIED! ]';
-          copyBtn.classList.add('copied');
-          setTimeout(() => {
-            copyBtn.textContent = original;
-            copyBtn.classList.remove('copied');
-          }, 2200);
-        }).catch(() => {
-          prompt('Copy the download link manually:', DOWNLOAD_CONFIG.downloadUrl);
-        });
+    // Check if Apps Script URL has been configured
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
+      console.warn('[EMAIL GATE] Apps Script URL not configured. See scripts/apps_script.gs for setup.');
+      showState('emailGateErrorState');
+      return;
+    }
+
+    try {
+      const body = new URLSearchParams({
+        email  : email,
+        source : 'website',
+        ua     : navigator.userAgent.substring(0, 200)
       });
-    }
 
-    // Also make the readonly input select-all on click
-    const linkDisplay = document.getElementById('downloadLinkDisplay');
-    if (linkDisplay) {
-      linkDisplay.addEventListener('click', () => linkDisplay.select());
+      // Use text/plain to avoid CORS preflight with Apps Script
+      const res  = await fetch(APPS_SCRIPT_URL, {
+        method  : 'POST',
+        headers : { 'Content-Type': 'text/plain' },
+        body    : body.toString()
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const msg = document.getElementById('emailGateSuccessMsg');
+        if (msg) msg.textContent = '\u2713 Download link sent to ' + email + ' \u2014 check your inbox!';
+        showState('emailGateSuccess');
+      } else {
+        console.error('[EMAIL GATE] Server error:', data.error);
+        showState('emailGateErrorState');
+      }
+    } catch (fetchErr) {
+      console.error('[EMAIL GATE] Fetch failed:', fetchErr);
+      showState('emailGateErrorState');
     }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const modal       = document.getElementById('emailGateModal');
+    const overlay     = document.getElementById('emailGateOverlay');
+    const closeBtn    = document.getElementById('closeEmailGateBtn');
+    const form        = document.getElementById('emailGateForm');
+    const retryBtn    = document.getElementById('emailGateRetryBtn');
+    const retryErrBtn = document.getElementById('emailGateRetryErrBtn');
+    const navBtn      = document.getElementById('navDownloadBtn');
+
+    document.querySelectorAll('.open-email-gate').forEach(b => b.addEventListener('click', open));
+    if (navBtn)       navBtn.addEventListener('click', open);
+    if (closeBtn)     closeBtn.addEventListener('click', close);
+    if (overlay)      overlay.addEventListener('click', close);
+    if (form)         form.addEventListener('submit', handleSubmit);
+    if (retryBtn)     retryBtn.addEventListener('click', () => showState('emailGateIdle'));
+    if (retryErrBtn)  retryErrBtn.addEventListener('click', () => showState('emailGateIdle'));
+
+    document.addEventListener('keydown', ev => {
+      if (ev.key === 'Escape' && modal && modal.style.display === 'flex') close();
+    });
   });
 })();
+
+
 
 
 const SCENARIOS = {

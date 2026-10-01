@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INTENT // Admin Dashboard</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080808;
+      --surface:   #0f0f0f;
+      --border:    #1e1e1e;
+      --accent:    #e8e8e8;
+      --dim:       #555;
+      --green:     #00e676;
+      --red:       #ff5252;
+      --yellow:    #ffd740;
+      --blue:      #40c4ff;
+      --font:      'JetBrains Mono', monospace;
+      --radius:    2px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--accent);
+      font-family: var(--font);
+      font-size: 13px;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── Login Screen ─────────────────────────────────────────────────────── */
+    #loginScreen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 440px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .login-header {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .login-header .dot { width: 8px; height: 8px; background: var(--accent); display: inline-block; }
+    .login-header h1 { font-size: 12px; font-weight: 700; letter-spacing: 0.15em; }
+    .login-header .sub { font-size: 10px; color: var(--dim); margin-left: auto; }
+
+    .login-body { padding: 28px 24px; }
+
+    .login-body label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: var(--dim);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .login-body input {
+      display: block;
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .login-body input:focus { border-color: var(--accent); }
+
+    .login-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      padding: 12px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .login-btn:hover { opacity: 0.85; }
+    .login-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .login-error {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--red);
+      min-height: 18px;
+      text-align: center;
+    }
+
+    /* ── Dashboard ────────────────────────────────────────────────────────── */
+    #dashboard { display: none; }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar .brand {
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      font-size: 12px;
+    }
+    .topbar .brand span { color: var(--dim); font-weight: 400; margin-left: 8px; }
+
+    .topbar .spacer { flex: 1; }
+
+    .topbar-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-family: var(--font);
+      font-size: 11px;
+      padding: 6px 12px;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: all 0.15s;
+    }
+    .topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .topbar-refresh { margin-right: 8px; }
+
+    /* ── Stats Bar ──────────────────────────────────────────────────────── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-card {
+      background: var(--surface);
+      padding: 20px 24px;
+      position: relative;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+    .stat-card.green::before { background: var(--green); }
+    .stat-card.blue::before  { background: var(--blue); }
+    .stat-card.yellow::before { background: var(--yellow); }
+    .stat-card.red::before   { background: var(--red); }
+
+    .stat-label {
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-sub {
+      font-size: 10px;
+      color: var(--dim);
+    }
+
+    /* ── Main Content ─────────────────────────────────────────────────────── */
+    .main-content { padding: 28px; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: var(--dim);
+      text-transform: uppercase;
+    }
+
+    .spacer-line { flex: 1; border-top: 1px solid var(--border); }
+
+    /* ── Search & Actions ─────────────────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 200px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--dim); }
+
+    .action-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-family: var(--font);
+      font-size: 11px;
+      padding: 8px 14px;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .action-btn.primary { border-color: var(--green); color: var(--green); }
+    .action-btn.primary:hover { background: var(--green); color: #000; }
+
+    /* ── Table ─────────────────────────────────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    thead th {
+      background: var(--surface);
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      color: var(--dim);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th:hover { color: var(--accent); }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+    tbody td {
+      padding: 10px 16px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .td-idx  { color: var(--dim); width: 48px; }
+    .td-email { color: var(--accent); font-weight: 500; }
+    .td-time  { color: var(--dim); font-size: 11px; }
+    .td-source {
+      font-size: 10px;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      display: inline-block;
+    }
+    .td-new { color: var(--green); font-size: 10px; }
+
+    /* ── Empty / Loading States ─────────────────────────────────────────── */
+    .state-msg {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--dim);
+      font-size: 12px;
+    }
+    .state-msg .big { font-size: 32px; margin-bottom: 12px; }
+    .state-msg .sub { margin-top: 8px; font-size: 11px; }
+
+    /* ── Blink cursor ─────────────────────────────────────────────────────── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .blink { animation: blink 1s step-end infinite; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .stats-bar { grid-template-columns: 1fr 1fr; }
+      .main-content { padding: 16px; }
+      .topbar { padding: 12px 16px; }
+    }
+    @media (max-width: 480px) {
+      .stats-bar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-header">
+      <span class="dot"></span>
+      <h1>INTENT // ADMIN</h1>
+      <span class="sub">RESTRICTED ACCESS</span>
+    </div>
+    <div class="login-body">
+      <label for="adminEmail">ADMIN EMAIL</label>
+      <input type="email" id="adminEmail" placeholder="reddykph@gmail.com" autocomplete="email" />
+
+      <label for="adminPassword">PASSWORD</label>
+      <input type="password" id="adminPassword" placeholder="••••••••••••" autocomplete="current-password" />
+
+      <button class="login-btn" id="loginBtn">[ AUTHENTICATE → ]</button>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DASHBOARD
+════════════════════════════════════════════════════════════ -->
+<div id="dashboard">
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="brand">&#9632; INTENT <span>// ADMIN DASHBOARD</span></div>
+    <div class="spacer"></div>
+    <button class="topbar-btn topbar-refresh" id="refreshBtn">[ &#x27F3; REFRESH ]</button>
+    <button class="topbar-btn" id="logoutBtn">[ LOGOUT ]</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card green">
+      <div class="stat-label">Total Registrations</div>
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-sub">all time</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Today</div>
+      <div class="stat-value" id="statToday">—</div>
+      <div class="stat-sub">since midnight IST</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-label">This Week</div>
+      <div class="stat-value" id="statWeek">—</div>
+      <div class="stat-sub">last 7 days</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Last 30 Days</div>
+      <div class="stat-value" id="statMonth">—</div>
+      <div class="stat-sub">rolling 30d</div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="section-header">
+      <span class="section-title">// Email Registrations</span>
+      <div class="spacer-line"></div>
+      <span id="tableCount" style="font-size:10px; color:var(--dim);"></span>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search email address..." />
+      <button class="action-btn primary" id="exportCsvBtn">[ ↓ EXPORT CSV ]</button>
+      <button class="action-btn" id="copyAllEmailsBtn">[ COPY ALL EMAILS ]</button>
+    </div>
+
+    <div class="table-wrap">
+      <div id="tableContainer">
+        <div class="state-msg">
+          <div class="big blink">▌</div>
+          <div>Loading registrations...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// CONFIG — must match your Apps Script deployment
+// ════════════════════════════════════════════════════════════════════════════
+const ADMIN_EMAIL    = 'reddykph@gmail.com';
+const ADMIN_PASSWORD = 'Reddy2005@clk';
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL'; // ← paste after deploying
+
+// ════════════════════════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════════════════════════
+let allData = [];
+let filteredData = [];
+
+function isLoggedIn() {
+  return sessionStorage.getItem('intent_admin') === 'ok';
+}
+
+function showDashboard() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  fetchData();
+}
+
+function showLogin() {
+  sessionStorage.removeItem('intent_admin');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// Login handler
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('adminPassword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('adminEmail').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('adminPassword').focus();
+});
+
+function doLogin() {
+  const email = document.getElementById('adminEmail').value.trim();
+  const pass  = document.getElementById('adminPassword').value;
+  const errEl = document.getElementById('loginError');
+  const btn   = document.getElementById('loginBtn');
+
+  if (email !== ADMIN_EMAIL || pass !== ADMIN_PASSWORD) {
+    errEl.textContent = '⚠ Invalid credentials.';
+    document.getElementById('adminPassword').value = '';
+    return;
+  }
+
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = '[ AUTHENTICATING... ]';
+
+  sessionStorage.setItem('intent_admin', 'ok');
+  setTimeout(showDashboard, 300);
+}
+
+document.getElementById('logoutBtn').addEventListener('click', showLogin);
+
+// Auto-login if session exists
+if (isLoggedIn()) showDashboard();
+
+// ════════════════════════════════════════════════════════════════════════════
+// DATA FETCH
+// ════════════════════════════════════════════════════════════════════════════
+async function fetchData() {
+  setTableLoading();
+
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
+    renderError('Apps Script URL not configured.<br>See scripts/apps_script.gs for setup instructions.');
+    return;
+  }
+
+  try {
+    const url = `${APPS_SCRIPT_URL}?key=${encodeURIComponent(ADMIN_PASSWORD)}`;
+    const res  = await fetch(url);
+    const json = await res.json();
+
+    if (!json.success) {
+      renderError('Server returned error: ' + (json.error || 'Unknown'));
+      return;
+    }
+
+    allData = json.data || [];
+    updateStats(json);
+    applyFilter();
+  } catch (err) {
+    renderError('Fetch failed: ' + err.message + '<br><small>Make sure APPS_SCRIPT_URL is set.</small>');
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', fetchData);
+
+function updateStats(json) {
+  const now  = new Date();
+  const d7   = new Date(now - 7  * 86400000);
+  const d30  = new Date(now - 30 * 86400000);
+
+  const data = json.data || [];
+  const week  = data.filter(r => new Date(r.timestamp) >= d7).length;
+  const month = data.filter(r => new Date(r.timestamp) >= d30).length;
+
+  setText('statTotal', json.total ?? 0);
+  setText('statToday', json.today ?? 0);
+  setText('statWeek',  week);
+  setText('statMonth', month);
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FILTER / SEARCH
+// ════════════════════════════════════════════════════════════════════════════
+document.getElementById('searchInput').addEventListener('input', applyFilter);
+
+function applyFilter() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  filteredData = q
+    ? allData.filter(r => r.email.toLowerCase().includes(q))
+    : [...allData];
+  renderTable();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TABLE RENDER
+// ════════════════════════════════════════════════════════════════════════════
+function setTableLoading() {
+  document.getElementById('tableContainer').innerHTML = `
+    <div class="state-msg">
+      <div class="big blink">▌</div>
+      <div>Loading registrations...</div>
+    </div>`;
+}
+
+function renderError(msg) {
+  document.getElementById('tableContainer').innerHTML = `
+    <div class="state-msg">
+      <div style="color:var(--red); font-size:20px; margin-bottom:12px;">✕</div>
+      <div style="color:var(--red);">${msg}</div>
+      <div class="sub"><a href="#" onclick="fetchData();return false;" style="color:var(--dim);">[ RETRY ]</a></div>
+    </div>`;
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d)) return ts;
+  return d.toLocaleString('en-IN', {
+    timeZone : 'Asia/Kolkata',
+    year     : 'numeric',
+    month    : 'short',
+    day      : '2-digit',
+    hour     : '2-digit',
+    minute   : '2-digit',
+    hour12   : true
+  });
+}
+
+function renderTable() {
+  const countEl = document.getElementById('tableCount');
+  if (countEl) countEl.textContent = filteredData.length + ' record' + (filteredData.length !== 1 ? 's' : '');
+
+  if (filteredData.length === 0) {
+    const q = document.getElementById('searchInput').value.trim();
+    document.getElementById('tableContainer').innerHTML = `
+      <div class="state-msg">
+        <div class="big" style="font-size:24px; color:var(--dim);">[ EMPTY ]</div>
+        <div>${q ? 'No results for "' + escHtml(q) + '"' : 'No registrations yet.'}</div>
+      </div>`;
+    return;
+  }
+
+  const rows = filteredData.map((r, i) => {
+    const isToday = new Date(r.timestamp).toDateString() === new Date().toDateString();
+    return `
+      <tr>
+        <td class="td-idx">${filteredData.length - i}</td>
+        <td class="td-email">${escHtml(r.email)}</td>
+        <td class="td-time">${formatDate(r.timestamp)}</td>
+        <td><span class="td-source">${escHtml(r.source || 'website')}</span></td>
+        ${isToday ? '<td class="td-new">● NEW</td>' : '<td></td>'}
+      </tr>`;
+  }).join('');
+
+  document.getElementById('tableContainer').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th class="td-idx">#</th>
+          <th>EMAIL ADDRESS</th>
+          <th>REGISTERED (IST)</th>
+          <th>SOURCE</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// EXPORT CSV
+// ════════════════════════════════════════════════════════════════════════════
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  if (!allData.length) { alert('No data to export.'); return; }
+
+  const header = ['#', 'Email', 'Timestamp (ISO)', 'Timestamp (IST)', 'Source'];
+  const rows   = allData.map((r, i) => [
+    allData.length - i,
+    r.email,
+    r.timestamp,
+    formatDate(r.timestamp),
+    r.source || 'website'
+  ]);
+
+  const csv = [header, ...rows]
+    .map(row => row.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(','))
+    .join('\r\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'intent_registrations_' + new Date().toISOString().substring(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// COPY ALL EMAILS
+// ════════════════════════════════════════════════════════════════════════════
+document.getElementById('copyAllEmailsBtn').addEventListener('click', () => {
+  const emails = allData.map(r => r.email).join('\n');
+  if (!emails) { alert('No emails to copy.'); return; }
+
+  navigator.clipboard.writeText(emails).then(() => {
+    const btn = document.getElementById('copyAllEmailsBtn');
+    const orig = btn.textContent;
+    btn.textContent = '[ ✓ COPIED ' + allData.length + ' EMAILS ]';
+    setTimeout(() => { btn.textContent = orig; }, 2500);
+  }).catch(() => {
+    prompt('Copy all emails:', emails);
+  });
+});
+</script>
+</body>
+</html>

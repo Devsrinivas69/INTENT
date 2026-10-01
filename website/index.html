@@ -391,7 +391,7 @@
   </main>
 
   <!-- =====================================================================
-       DOWNLOAD MODAL — Direct GitHub download, no email required
+       EMAIL GATE MODAL — Enter email → receive download link in inbox
        ===================================================================== -->
   <div id="emailGateModal" class="email-gate-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="emailGateTitle">
     <div class="email-gate-overlay" id="emailGateOverlay"></div>
@@ -403,44 +403,78 @@
         <button type="button" class="modal-close-btn" id="closeEmailGateBtn">[ ESC / CLOSE ]</button>
       </div>
 
-      <!-- Download Body -->
+      <!-- Idle State: Email Form -->
       <div class="email-gate-body" id="emailGateIdle">
         <div class="email-gate-desc">
-          <p>Click below to download INTENT directly from GitHub Releases — no email needed, 100% free and open source.</p>
-          <p class="email-gate-note">&#9632; MIT Licensed &nbsp;&#9632; SHA-256 Verified &nbsp;&#9632; No Subscription &nbsp;&#9632; Free Forever</p>
+          <p>Enter your email — we'll send your personal download link directly to your inbox.</p>
+          <p class="email-gate-note">&#9632; No spam &nbsp;&#9632; No subscription &nbsp;&#9632; MIT Licensed &nbsp;&#9632; Free forever</p>
         </div>
-
-        <a
-          href="https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe"
-          class="btn btn-solid btn-block"
-          id="directDownloadBtn"
-          style="display:block; text-align:center; margin-bottom:14px;"
-        >
-          [ DOWNLOAD INTENT-SETUP-1.0.0.EXE &mdash; 78 MB &darr; ]
-        </a>
-
-        <div class="email-input-row" style="display:flex; gap:8px; align-items:stretch;">
-          <input
-            type="text"
-            id="downloadLinkDisplay"
-            class="email-input"
-            value="https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe"
-            readonly
-            aria-label="Direct download URL"
-            style="flex:1; cursor:pointer; font-size:0.72rem;"
-          />
-          <button type="button" class="btn btn-outline" id="copyDownloadLinkBtn" style="white-space:nowrap;">
-            [ COPY LINK ]
+        <form id="emailGateForm" novalidate>
+          <div class="email-input-row">
+            <input
+              type="email"
+              id="emailGateInput"
+              name="email"
+              class="email-input"
+              placeholder="your@email.com"
+              autocomplete="email"
+              required
+              aria-label="Your email address"
+            />
+          </div>
+          <div class="email-error-msg" id="emailGateError" aria-live="polite"></div>
+          <button type="submit" class="btn btn-solid btn-block email-submit-btn" id="emailGateSubmitBtn">
+            [ SEND ME THE DOWNLOAD LINK &rarr; ]
           </button>
-        </div>
-
-        <div class="email-gate-trust" style="margin-top:14px;">
+        </form>
+        <div class="email-gate-trust">
           <span>SHA-256 Verified &bull; v1.0.0 &bull; 78 MB &bull; Windows 10/11 64-bit</span>
         </div>
+      </div>
 
-        <div style="margin-top:16px; text-align:center;">
-          <a href="https://github.com/Devsrinivas69/INTENT/releases/latest" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">
-            [ VIEW ALL RELEASES ON GITHUB &#x2197; ]
+      <!-- Loading State -->
+      <div class="email-gate-body email-state-loading" id="emailGateLoading" style="display:none;">
+        <div class="email-status-box email-status-loading">
+          <div class="email-status-icon">&#9632;</div>
+          <div>
+            <div class="email-status-tag">STATUS: DISPATCHING LINK...</div>
+            <p>Sending download link to your inbox. Please wait.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success State -->
+      <div class="email-gate-body" id="emailGateSuccess" style="display:none;">
+        <div class="email-status-box email-status-success">
+          <div class="email-status-icon">&#10003;</div>
+          <div>
+            <div class="email-status-tag">STATUS: LINK DISPATCHED</div>
+            <p id="emailGateSuccessMsg">Check your inbox &mdash; download link sent.</p>
+          </div>
+        </div>
+        <div class="email-gate-trust" style="margin-top:16px;">
+          <span>Didn't receive it? Check your spam folder or try again.</span>
+        </div>
+        <button type="button" class="btn btn-outline btn-block" id="emailGateRetryBtn" style="margin-top:12px;">
+          [ TRY A DIFFERENT EMAIL ]
+        </button>
+      </div>
+
+      <!-- Error State -->
+      <div class="email-gate-body" id="emailGateErrorState" style="display:none;">
+        <div class="email-status-box email-status-error">
+          <div class="email-status-icon">&#x2715;</div>
+          <div>
+            <div class="email-status-tag">STATUS: SEND FAILED</div>
+            <p>Something went wrong. Please try again or download directly from GitHub.</p>
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px;">
+          <button type="button" class="btn btn-solid" id="emailGateRetryErrBtn" style="flex:1;">
+            [ TRY AGAIN ]
+          </button>
+          <a href="https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe" class="btn btn-outline" style="flex:1; text-align:center;" target="_blank" rel="noopener noreferrer">
+            [ DIRECT DOWNLOAD &#x2197; ]
           </a>
         </div>
       </div>
