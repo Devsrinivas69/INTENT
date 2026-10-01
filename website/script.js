@@ -2,6 +2,156 @@
 // INTENT // INTERACTIVE TYPEWRITER SIMULATION SCRIPT
 // ==========================================================================
 
+// ==========================================================================
+// EMAIL GATE CONFIG — Replace these values with your EmailJS credentials
+// Steps: https://emailjs.com → Connect Gmail → Create Template → Copy IDs
+// ==========================================================================
+const EMAILJS_CONFIG = {
+  publicKey:   'YOUR_EMAILJS_PUBLIC_KEY',   // EmailJS → Account → Public Key
+  serviceId:   'YOUR_SERVICE_ID',           // EmailJS → Email Services → Service ID
+  templateId:  'YOUR_TEMPLATE_ID',          // EmailJS → Email Templates → Template ID
+  downloadUrl: 'https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe'
+};
+
+// ==========================================================================
+// ANALYTICS PIXEL — fires a lightweight hit on every successful link send
+// Replace PIXEL_URL with your own analytics endpoint (e.g. a 1×1 GIF on
+// your server, a Cloudflare Worker, or a free service like Plausible Goals).
+// ==========================================================================
+const ANALYTICS_PIXEL_URL = 'https://YOUR_ANALYTICS_ENDPOINT/pixel.gif';
+
+function fireDownloadAnalyticsPixel(email) {
+  try {
+    const img = new Image();
+    img.src = `${ANALYTICS_PIXEL_URL}?event=download_link_sent&ts=${Date.now()}`;
+    // Fire-and-forget — never blocks the user flow
+    console.info('[ANALYTICS] Download pixel fired for domain:', email.split('@')[1]);
+  } catch (e) {
+    console.warn('[ANALYTICS] Pixel fire failed (non-critical):', e);
+  }
+}
+
+// ==========================================================================
+// EMAIL GATE MODAL CONTROLLER
+// ==========================================================================
+(function initEmailGate() {
+  let emailJSReady = false;
+
+  function ensureEmailJSInit() {
+    if (emailJSReady) return true;
+    if (typeof emailjs === 'undefined') {
+      console.error('[EMAIL GATE] EmailJS SDK not loaded.');
+      return false;
+    }
+    emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey });
+    emailJSReady = true;
+    return true;
+  }
+
+  function validateEmail(str) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(str.trim());
+  }
+
+  function getFirstName(email) {
+    const prefix = email.split('@')[0];
+    return prefix.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  const STATES = ['emailGateIdle', 'emailGateLoading', 'emailGateSuccess', 'emailGateErrorState'];
+
+  function showState(stateId) {
+    STATES.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = (id === stateId) ? '' : 'none';
+    });
+  }
+
+  function openEmailGateModal() {
+    const modal = document.getElementById('emailGateModal');
+    if (!modal) return;
+    showState('emailGateIdle');
+    const input     = document.getElementById('emailGateInput');
+    const errorEl   = document.getElementById('emailGateError');
+    const submitBtn = document.getElementById('emailGateSubmitBtn');
+    if (input)     { input.value = '';    input.disabled = false; }
+    if (errorEl)   { errorEl.textContent = ''; }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '[ SEND ME THE DOWNLOAD LINK \u2192 ]'; }
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => { if (input) input.focus(); }, 80);
+  }
+
+  function closeEmailGateModal() {
+    const modal = document.getElementById('emailGateModal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function sendDownloadEmail(userEmail) {
+    if (!ensureEmailJSInit()) { showState('emailGateErrorState'); return; }
+    showState('emailGateLoading');
+    emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+      to_email:      userEmail,
+      user_name:     getFirstName(userEmail),
+      download_link: EMAILJS_CONFIG.downloadUrl
+    })
+    .then(() => {
+      const successMsg = document.getElementById('emailGateSuccessMsg');
+      if (successMsg) successMsg.textContent = `Check your inbox \u2014 download link sent to ${userEmail}`;
+      showState('emailGateSuccess');
+      fireDownloadAnalyticsPixel(userEmail);
+    })
+    .catch((err) => {
+      console.error('[EMAIL GATE] Send failed:', err);
+      showState('emailGateErrorState');
+    });
+  }
+
+  function handleFormSubmit(e) {
+    e.preventDefault();
+    const input     = document.getElementById('emailGateInput');
+    const errorEl   = document.getElementById('emailGateError');
+    const submitBtn = document.getElementById('emailGateSubmitBtn');
+    const email     = input ? input.value.trim() : '';
+    if (!validateEmail(email)) {
+      if (errorEl) errorEl.textContent = '\u26a0 Please enter a valid email address.';
+      if (input)   input.focus();
+      return;
+    }
+    if (errorEl)   errorEl.textContent = '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '[ SENDING... ]'; }
+    if (input)     input.disabled = true;
+    sendDownloadEmail(email);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const modal          = document.getElementById('emailGateModal');
+    const overlay        = document.getElementById('emailGateOverlay');
+    const closeBtn       = document.getElementById('closeEmailGateBtn');
+    const form           = document.getElementById('emailGateForm');
+    const retryBtn       = document.getElementById('emailGateRetryBtn');
+    const retryErrBtn    = document.getElementById('emailGateRetryErrBtn');
+    const navDownloadBtn = document.getElementById('navDownloadBtn');
+
+    document.querySelectorAll('.open-email-gate').forEach(btn => {
+      btn.addEventListener('click', openEmailGateModal);
+    });
+    if (navDownloadBtn) navDownloadBtn.addEventListener('click', openEmailGateModal);
+    if (closeBtn)       closeBtn.addEventListener('click', closeEmailGateModal);
+    if (overlay)        overlay.addEventListener('click', closeEmailGateModal);
+    if (form)           form.addEventListener('submit', handleFormSubmit);
+    if (retryBtn)       retryBtn.addEventListener('click', () => showState('emailGateIdle'));
+    if (retryErrBtn)    retryErrBtn.addEventListener('click', () => showState('emailGateIdle'));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+        closeEmailGateModal();
+      }
+    });
+  });
+})();
+
 const SCENARIOS = {
   canva: {
     prompt: 'user: "remove the background of this photo in canva"',
