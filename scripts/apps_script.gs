@@ -34,6 +34,11 @@ function testSetup() {
 // ── POST /exec — register email + send download link ────────────────────────
 function doPost(e) {
   try {
+    if (!e) {
+      Logger.log('doPost was invoked directly from the editor without an HTTP event object. To test setup and authorize permissions, run testSetup() instead.');
+      return jsonOut({ success: false, error: 'No HTTP event payload. Run testSetup() in the editor to authorize and test.' });
+    }
+
     let email = '', source = 'website', ua = '';
 
     // Priority 1: form-encoded body (from browser no-cors fetch)
@@ -101,6 +106,11 @@ function doPost(e) {
 
 // ── GET /exec?key=<ADMIN_KEY> — admin analytics ──────────────────────────────
 function doGet(e) {
+  if (!e) {
+    Logger.log('doGet was invoked directly from the editor without an HTTP event object.');
+    return jsonOut({ success: false, error: 'No HTTP event payload.' });
+  }
+
   const key = String((e.parameter && e.parameter.key) || '');
   if (key !== ADMIN_KEY) {
     return jsonOut({ success: false, error: 'Unauthorized' });
