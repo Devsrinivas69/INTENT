@@ -20,9 +20,28 @@ const SHEET_NAME    = 'Registrations';
 // POST /exec — register email, send download link via Gmail ──────────────────
 function doPost(e) {
   try {
-    const email  = String(e.parameter.email  || '').trim().toLowerCase();
-    const source = String(e.parameter.source || 'website').trim();
-    const ua     = String(e.parameter.ua     || '').substring(0, 300);
+    // Read from form-encoded body (no-cors fetch with x-www-form-urlencoded)
+    // Fall back to JSON body for direct API calls
+    let email, source, ua;
+    if (e.parameter && e.parameter.email) {
+      email  = String(e.parameter.email  || '').trim().toLowerCase();
+      source = String(e.parameter.source || 'website').trim();
+      ua     = String(e.parameter.ua     || '').substring(0, 300);
+    } else if (e.postData && e.postData.contents) {
+      try {
+        const data = JSON.parse(e.postData.contents);
+        email  = String(data.email  || '').trim().toLowerCase();
+        source = String(data.source || 'website').trim();
+        ua     = String(data.ua     || '').substring(0, 300);
+      } catch (_) {
+        const params = new URLSearchParams(e.postData.contents);
+        email  = String(params.get('email')  || '').trim().toLowerCase();
+        source = String(params.get('source') || 'website').trim();
+        ua     = String(params.get('ua')     || '').substring(0, 300);
+      }
+    } else {
+      email = ''; source = 'website'; ua = '';
+    }
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       return jsonOut({ success: false, error: 'Invalid email' });

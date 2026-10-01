@@ -68,28 +68,26 @@ const DIRECT_DOWNLOAD_URL = 'https://github.com/Devsrinivas69/INTENT/releases/la
     }
 
     try {
-      const body = new URLSearchParams({
-        email  : email,
-        source : 'website',
-        ua     : navigator.userAgent.substring(0, 200)
-      });
-
-      // Use text/plain to avoid CORS preflight with Apps Script
-      const res  = await fetch(APPS_SCRIPT_URL, {
+      // Google Apps Script redirects /exec → googleusercontent.com which drops CORS headers.
+      // Sending with mode:'no-cors' bypasses this entirely — the POST is processed normally
+      // by Apps Script, we just can't read the opaque response.
+      // application/x-www-form-urlencoded is required so Apps Script reads via e.parameter.
+      await fetch(APPS_SCRIPT_URL, {
         method  : 'POST',
-        headers : { 'Content-Type': 'text/plain' },
-        body    : body.toString()
+        mode    : 'no-cors',
+        headers : { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body    : new URLSearchParams({
+          email  : email,
+          source : 'website',
+          ua     : navigator.userAgent.substring(0, 200)
+        }).toString()
       });
-      const data = await res.json();
 
-      if (data.success) {
-        const msg = document.getElementById('emailGateSuccessMsg');
-        if (msg) msg.textContent = '\u2713 Download link sent to ' + email + ' \u2014 check your inbox!';
-        showState('emailGateSuccess');
-      } else {
-        console.error('[EMAIL GATE] Server error:', data.error);
-        showState('emailGateErrorState');
-      }
+      // Response is opaque (no-cors) so we show optimistic success.
+      // Apps Script has already saved the email and is sending the Gmail.
+      const msg = document.getElementById('emailGateSuccessMsg');
+      if (msg) msg.textContent = '\u2713 Download link sent to ' + email + ' \u2014 check your inbox!';
+      showState('emailGateSuccess');
     } catch (fetchErr) {
       console.error('[EMAIL GATE] Fetch failed:', fetchErr);
       showState('emailGateErrorState');
