@@ -176,15 +176,15 @@ def process(cmd: dict) -> dict:
                     }
 
         # ── TIER 3: HYBRID SCREEN MAP (UIA + WINRT OCR + SCREENSHOT) ──────────
-        if screenshot or hwnd:
+        if screenshot is not None or hwnd is not None:
             screen_map = build_screen_map(
-                hwnd=hwnd,
+                hwnd=hwnd if hwnd is not None else 0,
                 app_name=app_name,
                 window_title=window_title,
                 win_x=win_x, win_y=win_y,
                 win_w=win_w, win_h=win_h,
                 scale_factor=scale_factor,
-                screenshot_b64=screenshot,
+                screenshot_b64=screenshot if screenshot is not None else '',
             )
 
             candidates = find_candidates_in_map(screen_map, target_text, min_similarity=0.45)
@@ -291,7 +291,7 @@ def process(cmd: dict) -> dict:
 
         # ── LEVEL 1 CANVA: PURPLE SELECTION OUTLINE MATCHING TARGET ───────────
         if app_name == 'canva' and level_number == 1:
-            if screenshot_after_b64:
+            if screenshot_after_b64 and target_bounds is not None:
                 sel = detect_canva_selection_state(screenshot_after_b64, target_bounds=target_bounds, win_x=win_x, win_y=win_y)
                 if sel.get('selected'):
                     return {
@@ -317,7 +317,7 @@ def process(cmd: dict) -> dict:
 
         # ── LEVEL 3 CANVA: BACKGROUND REMOVAL ACTION CONFIRMATION ─────────────
         if app_name == 'canva' and level_number == 3:
-            if screenshot_before_b64 and screenshot_after_b64:
+            if screenshot_before_b64 and screenshot_after_b64 and target_bounds is not None:
                 canvas_diff = verify_canvas_background_removed(
                     screenshot_before_b64, screenshot_after_b64, target_bounds=target_bounds
                 )
@@ -331,7 +331,7 @@ def process(cmd: dict) -> dict:
 
         # ── LEVEL 4 CANVA: VERIFY FINAL ISOLATED IMAGE ────────────────────────
         if app_name == 'canva' and level_number == 4:
-            if screenshot_before_b64 and screenshot_after_b64:
+            if screenshot_before_b64 and screenshot_after_b64 and target_bounds is not None:
                 canvas_result = verify_canvas_background_removed(
                     screenshot_before_b64, screenshot_after_b64, target_bounds=target_bounds
                 )
@@ -370,7 +370,8 @@ def process(cmd: dict) -> dict:
 
 
 def main():
-    sys.stdout.reconfigure(line_buffering=True)
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, line_buffering=True)
     report = generate_startup_report()
     print(json.dumps(report))
     print(json.dumps({'status': 'ready', 'version': '4.4.0'}))

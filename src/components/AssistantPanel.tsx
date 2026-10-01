@@ -15,7 +15,7 @@ import { voiceService } from '../services/voice'
 import { connectivityManager } from '../services/connectivityManager'
 import { taskPersistenceService } from '../services/taskPersistenceService'
 import { getWorkflow, workflows } from '../workflows/index'
-import type { IntentResult, AppState } from '../types/intent'
+import type { IntentResult, AppState, SupportedApplication, SupportedTask } from '../types/intent'
 import type { Workflow, WorkflowLevel } from '../types/workflow'
 import type { WindowInfo, TargetLock, ScreenMap, CompletionProof, TargetCandidate } from '../types/screenMap'
 import type { PersistentTaskState } from '../types/taskPersistence'
@@ -561,7 +561,7 @@ export function AssistantPanel() {
   const handleRestoreTask = useCallback(async (saved: PersistentTaskState) => {
     const wf =
       workflows.find((w) => w.id === saved.workflowId || (w.application === saved.application && w.task === saved.workflowId)) ||
-      getWorkflow(saved.application, saved.workflowId)
+      getWorkflow(saved.application as SupportedApplication, saved.workflowId as SupportedTask)
     if (wf) {
       setWorkflow(wf)
       setUserIntent(saved.intent)
@@ -1260,7 +1260,7 @@ export function AssistantPanel() {
                 <CandidatePicker
                   candidates={targetLock.disambiguationOptions}
                   targetText={targetLock.text || currentLevel?.targetText || 'Control'}
-                  onSelectCandidate={handleSelectDisambiguationCandidate}
+                  onSelectCandidate={handleSelectDisambiguatedCandidate}
                   onCancel={handleReset}
                 />
               </motion.div>

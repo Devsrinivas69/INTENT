@@ -125,6 +125,8 @@ def check_python_helper_status():
             bufsize=1,
             cwd=WORKSPACE_ROOT
         )
+        assert p.stdout is not None
+        assert p.stdin is not None
         line1 = p.stdout.readline()
         print("Helper stdout:", line1.strip())
         line2 = p.stdout.readline()
