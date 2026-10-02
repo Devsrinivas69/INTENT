@@ -178,8 +178,8 @@ def get_hwnd_accessible_elements(hwnd: int, max_depth: int = 12) -> list:
             return results
 
         rect_root = root_ctrl.BoundingRectangle
-        root_w = int(rect_root.width()) if rect_root else 1920
-        root_h = int(rect_root.height()) if rect_root else 1080
+        root_w = rect_root.width() if rect_root else 1920
+        root_h = rect_root.height() if rect_root else 1080
 
         for ctrl, depth in auto.WalkControl(root_ctrl, maxDepth=max_depth):
             try:
@@ -195,10 +195,10 @@ def get_hwnd_accessible_elements(hwnd: int, max_depth: int = 12) -> list:
                 if not rect:
                     continue
 
-                w = int(rect.width())
-                h = int(rect.height())
-                x = int(rect.left)
-                y = int(rect.top)
+                w = rect.width()
+                h = rect.height()
+                x = rect.left
+                y = rect.top
 
                 if w <= 4 or h <= 4:
                     continue

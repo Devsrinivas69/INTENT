@@ -17,6 +17,7 @@ import os
 import ctypes
 import statistics
 from datetime import datetime
+from typing import Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'python_helper'))
 
@@ -72,7 +73,7 @@ TEST_TARGETS = {
 }
 
 # Synthetic benchmark tree for testing when native app windows are not open
-SYNTHETIC_APP_TREES = {
+SYNTHETIC_APP_TREES: dict[str, list[dict[str, Any]]] = {
     'excel': [
         {'text': 'Home', 'name': 'Home', 'automation_id': 'HomeTab', 'control_type': 'TabItemControl', 'x': 60, 'y': 55, 'width': 64, 'height': 26, 'confidence': 0.99, 'source': 'uia'},
         {'text': 'Insert', 'name': 'Insert', 'automation_id': 'InsertTab', 'control_type': 'TabItemControl', 'x': 128, 'y': 55, 'width': 68, 'height': 26, 'confidence': 0.99, 'source': 'uia'},
@@ -114,17 +115,17 @@ def get_current_dpi_scale():
         return 1.5
 
 
-def test_target_detection(app_name: str, target_info: dict, trial_num: int, target_dpi_scale: float = 1.0) -> dict:
+def test_target_detection(app_name: str, target_info: dict, trial_num: int, target_dpi_scale: float = 1.0) -> dict[str, Any]:
     """Run a single detection trial and return result metrics."""
     start_time = time.perf_counter()
-    result = {
+    result: dict[str, Any] = {
         'app': app_name,
         'target': target_info['target'],
         'trial': trial_num,
         'detected': False,
         'confidence': 0.0,
         'method': 'none',
-        'latency_ms': 0,
+        'latency_ms': 0.0,
         'bounds_valid': False,
         'error': None,
     }
@@ -153,10 +154,10 @@ def test_target_detection(app_name: str, target_info: dict, trial_num: int, targ
                 'elements': [
                     {
                         **el,
-                        'x': int(el['x'] * target_dpi_scale),
-                        'y': int(el['y'] * target_dpi_scale),
-                        'width': int(el['width'] * target_dpi_scale),
-                        'height': int(el['height'] * target_dpi_scale),
+                        'x': int(float(el['x']) * target_dpi_scale),
+                        'y': int(float(el['y']) * target_dpi_scale),
+                        'width': int(float(el['width']) * target_dpi_scale),
+                        'height': int(float(el['height']) * target_dpi_scale),
                     }
                     for el in elements
                 ]
@@ -188,10 +189,12 @@ def test_target_detection(app_name: str, target_info: dict, trial_num: int, targ
     return result
 
 
-def run_test_suite(apps: list, trials: int, target_dpi: int = None) -> dict:
+def run_test_suite(apps: list, trials: int, target_dpi: int | None = None) -> dict:
     """Run full test suite and return aggregated results."""
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
+        reconfigure = getattr(sys.stdout, 'reconfigure', None)
+        if callable(reconfigure):
+            reconfigure(encoding='utf-8')
     except Exception:
         pass
 
