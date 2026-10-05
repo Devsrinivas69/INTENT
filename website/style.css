@@ -118,14 +118,20 @@ a:hover {
 }
 
 .nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background-color: var(--fg) !important;
   color: var(--bg) !important;
   font-weight: 700;
   padding: 6px 12px;
+  text-decoration: none !important;
 }
 
 .nav-btn:hover {
   background-color: #e0e0e0 !important;
+  color: var(--bg) !important;
+  text-decoration: none !important;
 }
 
 /* Hero Section */
@@ -977,201 +983,6 @@ a:hover {
     align-items: flex-start;
   }
   .fund-modal-dialog {
-    padding: 24px 20px;
-  }
-}
-
-/* ==========================================================================
-   EMAIL GATE MODAL — Download link delivery gate
-   Reuses editorial monochrome design system tokens
-   ========================================================================== */
-
-.email-gate-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 1100;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.email-gate-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.92);
-}
-
-.email-gate-dialog {
-  position: relative;
-  z-index: 1101;
-  width: 100%;
-  max-width: 520px;
-  background-color: #040404;
-  border: 2px solid var(--border-strong);
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
-
-/* Body panels */
-.email-gate-body {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-/* Description text */
-.email-gate-desc p {
-  font-size: 12px;
-  color: #aaaaaa;
-  line-height: 1.8;
-}
-
-.email-gate-note {
-  font-size: 10px !important;
-  color: var(--muted) !important;
-  letter-spacing: 0.5px;
-  margin-top: 6px !important;
-}
-
-/* Email input */
-.email-input-row {
-  margin-bottom: 6px;
-}
-
-.email-input {
-  width: 100%;
-  background-color: #0a0a0a;
-  border: 1px solid var(--border-light);
-  color: var(--fg);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  padding: 14px 16px;
-  outline: none;
-  transition: border-color 0.15s;
-  letter-spacing: 0.5px;
-}
-
-.email-input::placeholder {
-  color: var(--dim);
-}
-
-.email-input:focus {
-  border-color: var(--border-strong);
-  background-color: #0e0e0e;
-}
-
-.email-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Inline error message */
-.email-error-msg {
-  font-size: 11px;
-  color: #cc4444;
-  min-height: 16px;
-  letter-spacing: 0.5px;
-}
-
-/* Submit button state */
-.email-submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Trust bar below form */
-.email-gate-trust {
-  font-size: 10px;
-  color: var(--dim);
-  text-align: center;
-  letter-spacing: 0.5px;
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-}
-
-/* ── Status boxes (loading / success / error) ── */
-.email-status-box {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  border-left: 2px solid var(--fg);
-  padding: 14px 18px;
-  background-color: #0c0c0c;
-}
-
-.email-status-icon {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-  min-width: 28px;
-  text-align: center;
-}
-
-.email-status-tag {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  margin-bottom: 5px;
-}
-
-.email-status-box p {
-  font-size: 11px;
-  color: #aaaaaa;
-  line-height: 1.65;
-}
-
-/* Loading — pulsing ■ animation */
-.email-status-loading {
-  border-left-color: var(--muted);
-}
-
-.email-state-loading .email-status-icon {
-  animation: intentPulse 0.9s ease-in-out infinite alternate;
-}
-
-@keyframes intentPulse {
-  from { opacity: 1;   transform: scale(1);    }
-  to   { opacity: 0.2; transform: scale(0.75); }
-}
-
-/* Success — white left border */
-.email-status-success {
-  border-left-color: #ffffff;
-}
-
-.email-status-success .email-status-icon {
-  color: #ffffff;
-}
-
-.email-status-success .email-status-tag {
-  color: #ffffff;
-}
-
-/* Error — dim red left border */
-.email-status-error {
-  border-left-color: #cc4444;
-}
-
-.email-status-error .email-status-icon {
-  color: #cc4444;
-}
-
-.email-status-error .email-status-tag {
-  color: #cc4444;
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-  .email-gate-dialog {
     padding: 24px 20px;
   }
 }
