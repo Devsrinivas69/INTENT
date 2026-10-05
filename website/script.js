@@ -2,7 +2,7 @@
 // EMAILJS CONFIG
 // Service / Template / Public Key from https://emailjs.com
 // ==========================================================================
-const EMAILJS_SERVICE_ID  = 'service_fhjqp2u';
+const EMAILJS_SERVICE_ID  = 'service_mg6ygjr';
 const EMAILJS_TEMPLATE_ID = 'template_49bgdsz';
 const EMAILJS_PUBLIC_KEY  = 'm4MpO-UB-YCknrB6sl39W';
 
