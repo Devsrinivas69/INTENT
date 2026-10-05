@@ -1,10 +1,28 @@
 // ==========================================================================
-// APPS SCRIPT CONFIG
-// Paste your Web App URL here after deploying (see scripts/apps_script.gs)
+// EMAILJS CONFIG
+// Service / Template / Public Key from https://emailjs.com
 // ==========================================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxGEZvGEtofxdAjjqet2C-SKE13AmR5PsV7WwOT6DJqKCcn1sDtI3djIe0V4Jpc-n_4/exec';
+const EMAILJS_SERVICE_ID  = 'service_fhjqp2u';
+const EMAILJS_TEMPLATE_ID = 'UT1HvGynyyvlj41G8';
+const EMAILJS_PUBLIC_KEY  = 'm4MpO-UB-YCknrB6sl39W';
 
 const DIRECT_DOWNLOAD_URL = 'https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe';
+
+// Initialise EmailJS as soon as this script loads
+(function initEmailJS() {
+  if (typeof emailjs !== 'undefined') {
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  } else {
+    // SDK not yet loaded — wait for it
+    window.addEventListener('load', () => {
+      if (typeof emailjs !== 'undefined') {
+        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+      } else {
+        console.error('[EMAIL GATE] EmailJS SDK failed to load.');
+      }
+    });
+  }
+})();
 
 // ==========================================================================
 // EMAIL GATE MODAL CONTROLLER
@@ -60,36 +78,35 @@ const DIRECT_DOWNLOAD_URL = 'https://github.com/Devsrinivas69/INTENT/releases/la
     if (input)     input.disabled = true;
     showState('emailGateLoading');
 
-    // Check if Apps Script URL has been configured
-    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
-      console.warn('[EMAIL GATE] Apps Script URL not configured. See scripts/apps_script.gs for setup.');
+    // Guard: EmailJS SDK must be present
+    if (typeof emailjs === 'undefined') {
+      console.error('[EMAIL GATE] EmailJS SDK not loaded.');
       showState('emailGateErrorState');
       return;
     }
 
     try {
-      // Google Apps Script redirects /exec → googleusercontent.com which drops CORS headers.
-      // Sending with mode:'no-cors' bypasses this entirely — the POST is processed normally
-      // by Apps Script, we just can't read the opaque response.
-      // application/x-www-form-urlencoded is required so Apps Script reads via e.parameter.
-      await fetch(APPS_SCRIPT_URL, {
-        method  : 'POST',
-        mode    : 'no-cors',
-        headers : { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body    : new URLSearchParams({
-          email  : email,
-          source : 'website',
-          ua     : navigator.userAgent.substring(0, 200)
-        }).toString()
-      });
+      // Send via EmailJS — this returns a real Promise, not an opaque response
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          to_email    : email,              // → "To Email" field in template  (MUST be {{to_email}})
+          email       : email,              // → Reply To field in template    ({{email}})
+          name        : 'INTENT User',      // → From Name / greeting
+          title       : 'INTENT Download',  // → Subject line variable
+          message     : 'Here is your personal INTENT v1.0.0 download link.',
+          download_url: DIRECT_DOWNLOAD_URL,
+        }
+      );
 
-      // Response is opaque (no-cors) so we show optimistic success.
-      // Apps Script has already saved the email and is sending the Gmail.
+      // Genuine success — EmailJS confirmed delivery
       const msg = document.getElementById('emailGateSuccessMsg');
       if (msg) msg.textContent = '\u2713 Download link sent to ' + email + ' \u2014 check your inbox!';
       showState('emailGateSuccess');
-    } catch (fetchErr) {
-      console.error('[EMAIL GATE] Fetch failed:', fetchErr);
+
+    } catch (err) {
+      console.error('[EMAIL GATE] EmailJS send failed:', err);
       showState('emailGateErrorState');
     }
   }
@@ -116,7 +133,6 @@ const DIRECT_DOWNLOAD_URL = 'https://github.com/Devsrinivas69/INTENT/releases/la
     });
   });
 })();
-
 
 
 
