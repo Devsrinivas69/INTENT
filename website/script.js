@@ -3,7 +3,7 @@
 // Service / Template / Public Key from https://emailjs.com
 // ==========================================================================
 const EMAILJS_SERVICE_ID  = 'service_fhjqp2u';
-const EMAILJS_TEMPLATE_ID = 'UT1HvGynyyvlj41G8';
+const EMAILJS_TEMPLATE_ID = 'template_49bgdsz';
 const EMAILJS_PUBLIC_KEY  = 'm4MpO-UB-YCknrB6sl39W';
 
 const DIRECT_DOWNLOAD_URL = 'https://github.com/Devsrinivas69/INTENT/releases/latest/download/INTENT-Setup-1.0.0.exe';
