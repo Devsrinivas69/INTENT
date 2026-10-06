@@ -273,6 +273,15 @@ def find_element_in_hwnd(hwnd: int, target_name: str, app_name: str = 'excel', m
     if not elements:
         return None
 
+    # Compute window-top Y offset for spatial bonus calculations
+    # (UIA returns absolute desktop coords, spatial bonus should be relative to window top)
+    try:
+        import win32gui as _wg
+        win_rect = _wg.GetWindowRect(hwnd)
+        win_top_y = win_rect[1]   # Absolute desktop Y of the window's top edge
+    except Exception:
+        win_top_y = 0
+
     best = None
     best_score = -1.0
 
@@ -282,11 +291,12 @@ def find_element_in_hwnd(hwnd: int, target_name: str, app_name: str = 'excel', m
         el_type = el.get('control_type', '')
         w = el.get('width', 0)
         h = el.get('height', 0)
-        y = el.get('y', 0)
+        y_abs = el.get('y', 0)  # Absolute desktop Y
+        y_rel = y_abs - win_top_y  # Window-relative Y for spatial reasoning
 
         # ── SPECIAL CASE: Data Cells Range (Excel Level 1) ─────────────────────
         if app_name == 'excel' and ('data' in target_norm or 'cell' in target_norm or 'range' in target_norm or 'sheet' in target_norm):
-            if el.get('class_name') == 'EXCEL7' or (el_type in ('CustomControl', 'PaneControl', 'TableControl', 'DataGridControl') and y > 150 and w > 200 and h > 150):
+            if el.get('class_name') == 'EXCEL7' or (el_type in ('CustomControl', 'PaneControl', 'TableControl', 'DataGridControl') and y_rel > 150 and w > 200 and h > 150):
                 return {
                     'text': 'Worksheet Data Grid',
                     'control_type': el_type,
@@ -297,6 +307,21 @@ def find_element_in_hwnd(hwnd: int, target_name: str, app_name: str = 'excel', m
                     'enabled': True,
                     'source': 'uia_worksheet_grid',
                     'confidence': 0.96,
+                }
+
+        # ── SPECIAL CASE: Chrome Web Content Area (Level 1 navigation steps) ──
+        if app_name.startswith('chrome') and ('web content' in target_norm or 'webpage' in target_norm or 'viewport' in target_norm):
+            if el_type in ('PaneControl', 'DocumentControl', 'CustomControl') and w > 400 and h > 300 and y_rel > 70:
+                return {
+                    'text': 'Web Content Area',
+                    'control_type': el_type,
+                    'x': el['x'] + 100,
+                    'y': el['y'] + 80,
+                    'width': min(el['width'] - 200, 800),
+                    'height': min(el['height'] - 160, 500),
+                    'enabled': True,
+                    'source': 'uia_web_content',
+                    'confidence': 0.90,
                 }
 
         # ── SPECIAL CASE: Document Body (Word / Notepad text editor) ─────────
@@ -331,8 +356,15 @@ def find_element_in_hwnd(hwnd: int, target_name: str, app_name: str = 'excel', m
             score = min(1.0, score + 0.05) if score > 0.5 else score
 
         # Spatial plausibility bonus for Ribbon / Top Toolbar items
-        if 20 <= y <= 220 and score > 0.5:
+        # Use WINDOW-RELATIVE Y (y_rel) so this works regardless of desktop position:
+        #   Excel ribbon: y_rel 60-130px
+        #   Chrome toolbar (address bar, star, tabs): y_rel 0-65px
+        #   Word / PPT ribbon: y_rel 60-140px
+        if 0 <= y_rel <= 220 and score > 0.5:
             score = min(1.0, score + 0.05)
+        # Extra bonus for Chrome toolbar items (they must be near top of window)
+        if app_name.startswith('chrome') and 0 <= y_rel <= 70 and score > 0.4:
+            score = min(1.0, score + 0.08)
 
         if score > best_score and score >= 0.55:
             best_score = score

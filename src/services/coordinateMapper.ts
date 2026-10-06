@@ -322,8 +322,10 @@ export class CoordinateManager {
     targetType: string = 'BUTTON',
     customAnchor?: { x: number; y: number }
   ): { x: number; y: number } {
-    const screenW = this.meta.totalWidth || this.meta.screenWidth || (typeof window !== 'undefined' ? window.innerWidth : 1920) || 1920
-    const screenH = this.meta.totalHeight || this.meta.screenHeight || (typeof window !== 'undefined' ? window.innerHeight : 1080) || 1080
+    // Use physical desktop dimensions from display metadata — NOT window.innerWidth/Height
+    // (which in the overlay window equals the INTENT panel size, NOT the desktop resolution)
+    const screenW = this.meta.totalWidth ?? this.meta.screenWidth ?? 1920
+    const screenH = this.meta.totalHeight ?? this.meta.screenHeight ?? 1080
 
     const targetAnchor = customAnchor || this.computeTargetAnchor(overlayBounds, 'CLICKABLE_CENTER', targetType)
     const centerX = Math.max(30, Math.min(screenW - 30, targetAnchor.x))

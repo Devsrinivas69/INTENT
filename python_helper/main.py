@@ -202,7 +202,9 @@ def process(cmd: dict) -> dict:
                 if w > win_w * 0.85 and h > win_h * 0.85:
                     continue
 
-                # In Canva: reject Chrome tabs/navigation bar (y < win_y + 65)
+                # For Canva ONLY: reject candidates in the browser tabs/navigation bar (y < win_y + 65)
+                # Chrome workflows intentionally target toolbar elements (address bar, star, tabs)
+                # which ARE in this zone — do NOT filter them for Chrome.
                 if app_name == 'canva' and y < win_y + 65:
                     continue
 

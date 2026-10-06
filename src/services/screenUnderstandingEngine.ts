@@ -197,10 +197,17 @@ export class ScreenUnderstandingEngine {
       return { valid: false, reason: 'Root window bounds rejected' }
     }
 
-    // 5. Target inside active application window (reject Chrome tab/address bar area)
+    // 5. Target inside active application window
+    // NOTE: For Chrome/Edge, toolbar controls (address bar, bookmark star, tabs) ARE in
+    // the first 65px of the window. Only apply this guard for non-Chrome apps (e.g. Canva).
+    const isChromeApp = winInfo.app?.startsWith('chrome') || winInfo.app?.startsWith('edge')
     const TOLERANCE = 50
-    if (y < winInfo.y + 65) {
+    if (!isChromeApp && y < winInfo.y + 65) {
       return { valid: false, reason: `Target in browser header/tabs area: y=${y} vs min y=${winInfo.y + 65}` }
+    }
+    // For Chrome: still reject targets that are ABOVE the window top entirely
+    if (isChromeApp && y < winInfo.y - 5) {
+      return { valid: false, reason: `Target above Chrome window top: y=${y} vs winInfo.y=${winInfo.y}` }
     }
     if (x < winInfo.x - TOLERANCE) {
       return { valid: false, reason: `Target to left of window: x=${x} vs window x=${winInfo.x}` }
@@ -232,7 +239,21 @@ export class ScreenUnderstandingEngine {
     level: WorkflowLevel,
   ): Promise<TargetResult> {
     await this.initDisplayMeta()
-    const targetType = level.targetType || (level.levelNumber === 1 ? 'CANVAS_OBJECT' : 'BUTTON')
+    // Determine target type:
+    // - Level 1 is typically a canvas/viewport area (CANVAS_OBJECT) for Canva & Chrome
+    // - Chrome toolbar elements (address bar, star, tabs) are always BUTTON
+    // - Explicit workflow targetType always wins
+    let targetType = level.targetType
+    if (!targetType) {
+      const isChromeApp = winInfo.app?.startsWith('chrome')
+      const targetLower = level.targetText?.toLowerCase() || ''
+      const isWebContentArea = targetLower.includes('web content') || targetLower.includes('viewport') || targetLower.includes('webpage')
+      if (level.levelNumber === 1 && (!isChromeApp || isWebContentArea)) {
+        targetType = 'CANVAS_OBJECT'
+      } else {
+        targetType = 'BUTTON'
+      }
+    }
     const now = Date.now()
 
     const rawCandidates: Array<{ raw: any; source: string }> = []
