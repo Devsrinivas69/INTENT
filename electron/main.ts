@@ -67,6 +67,7 @@ function getResourcePath(relativePath: string): string {
 
 interface IntentConfig {
   geminiApiKey?: string
+  geminiModel?: string
   donationUrl?: string
   lastExtensionId?: string
 }
@@ -153,13 +154,72 @@ let appConfig: IntentConfig = loadConfig()
 let genAI: GoogleGenerativeAI | null = null
 let activeGeminiKey = appConfig.geminiApiKey || process.env.GEMINI_API_KEY || ''
 
+const GEMINI_CANDIDATE_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-flash-latest',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+]
+
+let activeModelName = appConfig.geminiModel || 'gemini-2.5-flash'
+
+async function resolveWorkingGeminiModel(client: GoogleGenerativeAI): Promise<string> {
+  const modelsToTry = [
+    activeModelName,
+    ...GEMINI_CANDIDATE_MODELS.filter((m) => m !== activeModelName),
+  ]
+
+  let lastError: any = null
+  for (const m of modelsToTry) {
+    try {
+      const model = client.getGenerativeModel({ model: m })
+      await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+        generationConfig: { maxOutputTokens: 2 },
+      })
+      activeModelName = m
+      return m
+    } catch (e: any) {
+      lastError = e
+      if (e?.status === 401 || e?.message?.includes('401') || e?.message?.includes('API_KEY_INVALID')) {
+        throw e
+      }
+    }
+  }
+  throw lastError || new Error('No compatible Gemini model found')
+}
+
+async function callGeminiWithAutoFallback<T>(
+  fn: (model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>) => Promise<T>
+): Promise<T> {
+  if (!genAI) throw new Error('Gemini API not initialized')
+  try {
+    const model = genAI.getGenerativeModel({ model: activeModelName })
+    return await fn(model)
+  } catch (err: any) {
+    const isModelNotFound =
+      err?.status === 404 ||
+      err?.message?.includes('not found') ||
+      err?.message?.includes('404')
+    if (isModelNotFound) {
+      console.warn(`[INTENT] Gemini model ${activeModelName} returned 404. Attempting to resolve active model...`)
+      const newModel = await resolveWorkingGeminiModel(genAI)
+      appConfig.geminiModel = newModel
+      saveConfig(appConfig)
+      const model = genAI.getGenerativeModel({ model: newModel })
+      return await fn(model)
+    }
+    throw err
+  }
+}
+
 function initGemini(key: string): boolean {
   const trimmed = key ? key.trim() : ''
   if (trimmed) {
     try {
       genAI = new GoogleGenerativeAI(trimmed)
       activeGeminiKey = trimmed
-      console.log('[INTENT] Gemini API initialized with user/environment key')
+      console.log(`[INTENT] Gemini API initialized with user/environment key (Model: ${activeModelName})`)
       return true
     } catch (e) {
       console.error('[INTENT] Failed to initialize Gemini API:', e)
@@ -917,9 +977,6 @@ async function classifyIntentLayered(text: string): Promise<any> {
   // Layer 3: Gemini (Strictly if ONLINE)
   if (connectivityManager.isOnline() && genAI) {
     try {
-      const startTime = Date.now()
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
-
       const prompt = `You are an intent classifier for INTENT, a Windows desktop AI guidance assistant.
 Classify the user's request into exactly one of the supported applications and tasks:
 
@@ -975,7 +1032,15 @@ RESPONSE FORMAT (JSON ONLY, NO MARKDOWN):
 If supported: {"supported":true,"application":"canva","task":"remove_background","confidence":0.95}
 If unsupported: {"supported":false,"message":"Unsupported request. INTENT supports Canva, Excel, Word, PowerPoint, Notepad, Calculator, Chrome, Gmail, and YouTube workflows."}`
 
-      const result = await model.generateContent(prompt)
+      const result = await callGeminiWithAutoFallback((model) =>
+        model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 120,
+          },
+        })
+      )
       connectivityManager.recordApiSuccess(Date.now() - startTime)
       const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
       return JSON.parse(raw)
@@ -1040,7 +1105,6 @@ ipcMain.handle('gemini:disambiguate', async (_, params: {
 
   try {
     const startTime = Date.now()
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
     const candidateList = params.candidates
       .map((c) => `[Index ${c.index}] "${c.text}" at (x:${c.x}, y:${c.y}, w:${c.width}, h:${c.height})`)
@@ -1073,7 +1137,7 @@ RESPONSE FORMAT (JSON ONLY):
       })
     }
 
-    const result = await model.generateContent(contents)
+    const result = await callGeminiWithAutoFallback((model) => model.generateContent(contents))
     connectivityManager.recordApiSuccess(Date.now() - startTime)
     const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
     return JSON.parse(raw)
@@ -1099,7 +1163,6 @@ ipcMain.handle('gemini:find-target-vision', async (_, params: {
 
   try {
     const startTime = Date.now()
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
     const base64 = params.screenshot.replace(/^data:image\/(png|jpeg|webp);base64,/, '')
     const layoutContext = params.application === 'excel' ? EXCEL_LAYOUT_SCHEMA : CANVA_LAYOUT_SCHEMA
 
@@ -1118,10 +1181,12 @@ Do NOT return the entire application window (e.g. 0,0,1280,672). Return the exac
 RESPONSE FORMAT (JSON ONLY):
 {"found": true, "targetText": "${params.targetText}", "x": 540, "y": 190, "width": 270, "height": 360, "confidence": 0.92}`
 
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { data: base64, mimeType: 'image/png' } },
-    ])
+    const result = await callGeminiWithAutoFallback((model) =>
+      model.generateContent([
+        prompt,
+        { inlineData: { data: base64, mimeType: 'image/png' } },
+      ])
+    )
     connectivityManager.recordApiSuccess(Date.now() - startTime)
     const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
     const parsed = JSON.parse(raw)
@@ -1169,7 +1234,6 @@ ipcMain.handle('gemini:verify-state', async (_, params: {
 
   try {
     const startTime = Date.now()
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
     const base64 = params.screenshotAfter.replace(/^data:image\/(png|jpeg|webp);base64,/, '')
     const layoutContext = params.application === 'excel' ? EXCEL_LAYOUT_SCHEMA : CANVA_LAYOUT_SCHEMA
 
@@ -1189,10 +1253,12 @@ For Canva Level 3: Look for BG Remover processing or transparent background.
 RESPONSE FORMAT (JSON ONLY):
 {"completed": true, "confidence": 0.94, "evidence": "Canva image is selected with purple border outline and top toolbar"}`
 
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { data: base64, mimeType: 'image/png' } },
-    ])
+    const result = await callGeminiWithAutoFallback((model) =>
+      model.generateContent([
+        prompt,
+        { inlineData: { data: base64, mimeType: 'image/png' } },
+      ])
+    )
     connectivityManager.recordApiSuccess(Date.now() - startTime)
     const raw = result.response.text().trim().replace(/```json\n?|\n?```/g, '').trim()
     return JSON.parse(raw)
@@ -1340,6 +1406,7 @@ ipcMain.handle('settings:get', () => {
     isCustomKey: !!appConfig.geminiApiKey,
     maskedKey: activeGeminiKey ? `${activeGeminiKey.slice(0, 4)}••••••••${activeGeminiKey.slice(-4)}` : '',
     rawKey: activeGeminiKey,
+    modelName: activeModelName,
     donationUrl: appConfig.donationUrl || 'https://buymeacoffee.com',
   }
 })
@@ -1349,24 +1416,22 @@ ipcMain.handle('settings:save-gemini-key', async (_, apiKey: string) => {
     const key = (apiKey || '').trim()
     if (!key) {
       delete appConfig.geminiApiKey
+      delete appConfig.geminiModel
       saveConfig(appConfig)
       initGemini(process.env.GEMINI_API_KEY || '')
       return { success: true, message: 'Custom key cleared. Default fallback active.' }
     }
 
-    // Verify key with a quick lightweight call
+    // Verify key with lightweight call across candidate models
     const testGenAI = new GoogleGenerativeAI(key)
-    const model = testGenAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
-    await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
-      generationConfig: { maxOutputTokens: 2 },
-    })
+    const workingModel = await resolveWorkingGeminiModel(testGenAI)
 
     // Key is verified! Persist and activate
     appConfig.geminiApiKey = key
+    appConfig.geminiModel = workingModel
     saveConfig(appConfig)
     initGemini(key)
-    return { success: true, message: 'Gemini API Key verified and saved successfully!' }
+    return { success: true, message: `Gemini API Key verified and saved successfully! (${workingModel})` }
   } catch (err: any) {
     console.warn('[INTENT] Gemini Key validation failed:', err)
     return { success: false, error: err?.message || 'Invalid API Key. Please verify and try again.' }
@@ -1378,12 +1443,13 @@ ipcMain.handle('settings:test-gemini-key', async (_, apiKey: string) => {
     const key = (apiKey || '').trim()
     if (!key) return { success: false, error: 'API key cannot be empty' }
     const testGenAI = new GoogleGenerativeAI(key)
-    const model = testGenAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const workingModel = await resolveWorkingGeminiModel(testGenAI)
+    const model = testGenAI.getGenerativeModel({ model: workingModel })
     const res = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: 'respond with OK' }] }],
       generationConfig: { maxOutputTokens: 5 },
     })
-    return { success: true, response: res.response.text().trim() }
+    return { success: true, response: `${res.response.text().trim()} (${workingModel})` }
   } catch (err: any) {
     return { success: false, error: err?.message || 'Verification test failed' }
   }
@@ -1391,6 +1457,7 @@ ipcMain.handle('settings:test-gemini-key', async (_, apiKey: string) => {
 
 ipcMain.handle('settings:clear-gemini-key', () => {
   delete appConfig.geminiApiKey
+  delete appConfig.geminiModel
   saveConfig(appConfig)
   initGemini(process.env.GEMINI_API_KEY || '')
   return { success: true }

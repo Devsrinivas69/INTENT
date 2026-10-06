@@ -76,7 +76,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getStartupReport: (): Promise<any> =>
     ipcRenderer.invoke('app:startup-report'),
 
-  getSettings: (): Promise<{ hasKey: boolean; isCustomKey: boolean; maskedKey: string; rawKey: string; donationUrl: string }> =>
+  getSettings: (): Promise<{ hasKey: boolean; isCustomKey: boolean; maskedKey: string; rawKey: string; modelName?: string; donationUrl: string }> =>
     ipcRenderer.invoke('settings:get'),
 
   saveGeminiKey: (apiKey: string): Promise<{ success: boolean; message?: string; error?: string }> =>

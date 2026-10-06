@@ -835,7 +835,7 @@ export function AssistantPanel() {
                         type="password"
                         value={wizardApiKeyInput}
                         onChange={(e) => setWizardApiKeyInput(e.target.value.trim())}
-                        placeholder="Paste Gemini API Key (AIzaSy...)"
+                        placeholder="Paste Gemini API Key (AQ... or AIzaSy...)"
                         className="w-full bg-black/60 border border-white/40 rounded px-2.5 py-1.5 text-xs text-white font-mono placeholder-white/30 focus:border-white focus:outline-none"
                       />
                       <div className="text-[9px] text-white/50 flex justify-between">

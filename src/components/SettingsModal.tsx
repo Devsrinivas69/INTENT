@@ -20,6 +20,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [maskedKey, setMaskedKey] = useState('')
   const [hasKey, setHasKey] = useState(false)
   const [isCustomKey, setIsCustomKey] = useState(false)
+  const [modelName, setModelName] = useState('')
   const [loading, setLoading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
 
@@ -36,6 +37,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setHasKey(s.hasKey)
         setIsCustomKey(s.isCustomKey)
         setMaskedKey(s.maskedKey || '')
+        if (s.modelName) {
+          setModelName(s.modelName)
+        }
         if (s.rawKey) {
           setApiKeyInput(s.rawKey)
         }
@@ -57,9 +61,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const res = await api?.saveGeminiKey?.(apiKeyInput.trim())
       if (res?.success) {
-        setStatusMessage({ type: 'success', text: 'API Key verified and saved successfully.' })
+        setStatusMessage({ type: 'success', text: res.message || 'API Key verified and saved successfully.' })
         setHasKey(true)
         setIsCustomKey(true)
+        await loadSettings()
         onKeyUpdated?.()
       } else {
         setStatusMessage({ type: 'error', text: res?.error || 'Validation failed. Please check the key.' })
@@ -124,13 +129,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Current Status */}
           <div className="flex justify-between items-center text-[10px] bg-white/[0.05] border border-white/20 p-2">
             <span>STATUS:</span>
-            <span className={hasKey ? 'text-white font-bold' : 'text-white/50'}>
-              {hasKey
-                ? isCustomKey
-                  ? '[ CUSTOM KEY ACTIVE ]'
-                  : '[ ENV KEY DETECTED ]'
-                : '[ NOT CONFIGURED // RUNNING LOCAL ONLY ]'}
-            </span>
+            <div className="text-right flex flex-col items-end gap-0.5">
+              <span className={hasKey ? 'text-white font-bold' : 'text-white/50'}>
+                {hasKey
+                  ? isCustomKey
+                    ? '[ CUSTOM KEY ACTIVE ]'
+                    : '[ ENV KEY DETECTED ]'
+                  : '[ NOT CONFIGURED // RUNNING LOCAL ONLY ]'}
+              </span>
+              {hasKey && modelName && (
+                <span className="text-[9px] text-white/60 tracking-wider">
+                  MODEL: {modelName}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Key Input */}
@@ -143,7 +155,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type={showKey ? 'text' : 'password'}
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value.trim())}
-                placeholder="AIzaSy..."
+                placeholder="AQ... or AIzaSy..."
                 className="w-full bg-black border border-white px-2.5 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:bg-white/10"
               />
               <button
