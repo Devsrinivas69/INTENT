@@ -1,0 +1,4 @@
+﻿python_helper/* linguist-vendored
+scripts/*.py linguist-vendored
+*.js linguist-detectable=true
+*.jsx linguist-detectable=true
